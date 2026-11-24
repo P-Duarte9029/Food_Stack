@@ -6,7 +6,6 @@ import {
 } from '@food-stack/shared';
 import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { DEFAULT_RESTAURANT_ID } from '../restaurant/default-restaurant';
 
 @Injectable()
 export class MenuService {
@@ -15,32 +14,32 @@ export class MenuService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  list(): Promise<MenuItem[]> {
+  list(restaurantId: string): Promise<MenuItem[]> {
     return this.prisma.menuItem.findMany({
-      where: { restaurantId: DEFAULT_RESTAURANT_ID },
+      where: { restaurantId },
       orderBy: { createdAt: 'asc' },
       select: { id: true, name: true, category: true },
     });
   }
 
-  async create(input: CreateMenuItemInput): Promise<MenuItem> {
+  async create(restaurantId: string, input: CreateMenuItemInput): Promise<MenuItem> {
     const item = await this.prisma.menuItem.create({
-      data: { ...input, restaurantId: DEFAULT_RESTAURANT_ID },
+      data: { ...input, restaurantId },
       select: { id: true, name: true, category: true },
     });
-    await this.publishChange();
+    await this.publishChange(restaurantId);
     return item;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(restaurantId: string, id: string): Promise<void> {
     const { count } = await this.prisma.menuItem.deleteMany({
-      where: { id, restaurantId: DEFAULT_RESTAURANT_ID },
+      where: { id, restaurantId },
     });
     if (count === 0) throw new NotFoundException('Prato não encontrado');
-    await this.publishChange();
+    await this.publishChange(restaurantId);
   }
 
-  private async publishChange(): Promise<void> {
-    this.realtime.publish(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.menuChanged, await this.list());
+  private async publishChange(restaurantId: string): Promise<void> {
+    this.realtime.publish(restaurantId, REALTIME_EVENTS.menuChanged, await this.list(restaurantId));
   }
 }

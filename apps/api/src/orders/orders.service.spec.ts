@@ -45,7 +45,7 @@ describe('OrdersService.create', () => {
     const { service } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 2 }) },
     });
-    await expect(service.create(input)).rejects.toThrow(BadRequestException);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(BadRequestException);
   });
 
   it('rejeita item que não existe no cardápio', async () => {
@@ -53,7 +53,7 @@ describe('OrdersService.create', () => {
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
       menuItem: { findMany: vi.fn().mockResolvedValue([]) },
     });
-    await expect(service.create(input)).rejects.toThrow(BadRequestException);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(BadRequestException);
   });
 
   it('usa o nome do cardápio e publica order:created', async () => {
@@ -64,7 +64,7 @@ describe('OrdersService.create', () => {
       order: { create },
     });
 
-    const order = await service.create(input);
+    const order = await service.create(DEFAULT_RESTAURANT_ID, input);
 
     expect(create.mock.calls[0]?.[0].data.items.create).toEqual([
       { menuItemId: 'm1', name: 'Pudim', quantity: 2 },
@@ -76,14 +76,14 @@ describe('OrdersService.create', () => {
 describe('OrdersService.advance', () => {
   it('lança NotFound para pedido inexistente', async () => {
     const { service } = setup({ order: { findFirst: vi.fn().mockResolvedValue(null) } });
-    await expect(service.advance('x')).rejects.toThrow(NotFoundException);
+    await expect(service.advance(DEFAULT_RESTAURANT_ID, 'x')).rejects.toThrow(NotFoundException);
   });
 
   it('lança Conflict quando o pedido já está pronto', async () => {
     const { service } = setup({
       order: { findFirst: vi.fn().mockResolvedValue({ status: 'ready' }) },
     });
-    await expect(service.advance('x')).rejects.toThrow(ConflictException);
+    await expect(service.advance(DEFAULT_RESTAURANT_ID, 'x')).rejects.toThrow(ConflictException);
   });
 
   it('lança Conflict quando outro cliente mudou o status antes', async () => {
@@ -93,7 +93,7 @@ describe('OrdersService.advance', () => {
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
     });
-    await expect(service.advance('x')).rejects.toThrow(ConflictException);
+    await expect(service.advance(DEFAULT_RESTAURANT_ID, 'x')).rejects.toThrow(ConflictException);
   });
 
   it('avança o status e publica order:updated', async () => {
@@ -105,7 +105,7 @@ describe('OrdersService.advance', () => {
       },
     });
 
-    const order = await service.advance('order-1');
+    const order = await service.advance(DEFAULT_RESTAURANT_ID, 'order-1');
 
     expect(order.status).toBe('in_preparation');
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderUpdated, order);

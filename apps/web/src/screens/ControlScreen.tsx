@@ -9,6 +9,7 @@ import {
 } from '@food-stack/shared';
 import { StatusBadge } from '../components/StatusBadge';
 import { setUnsavedChanges } from '../navigation/unsaved-changes';
+import { TeamSection } from './TeamSection';
 import { useOrders } from '../orders/orders-store';
 import {
   addMenuItem,
@@ -391,6 +392,9 @@ export function ControlScreen() {
             setAdded((current) => current.filter((entry) => entry.tempId !== tempId));
           }}
         />
+        <div className="min-w-0 md:col-span-2">
+          <TeamSection />
+        </div>
         <div className="min-w-0 md:col-span-2">
           <HistorySection />
         </div>

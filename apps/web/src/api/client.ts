@@ -4,6 +4,12 @@ export class ApiError extends Error {}
 
 const OFFLINE_MESSAGE = 'Sem conexão com o servidor. Tente novamente.';
 
+let unauthorizedHandler: (() => void) | null = null;
+
+export const setUnauthorizedHandler = (handler: () => void): void => {
+  unauthorizedHandler = handler;
+};
+
 function messageFrom(body: unknown): string {
   if (typeof body === 'object' && body !== null && 'message' in body) {
     const { message } = body;
@@ -22,6 +28,7 @@ export async function request<T>(
   try {
     response = await fetch(`/api${path}`, {
       method,
+      credentials: 'same-origin',
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -30,7 +37,10 @@ export async function request<T>(
   }
 
   const payload: unknown = response.status === 204 ? null : await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(messageFrom(payload));
+  if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login') unauthorizedHandler?.();
+    throw new ApiError(messageFrom(payload));
+  }
 
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new ApiError('Resposta inesperada do servidor.');

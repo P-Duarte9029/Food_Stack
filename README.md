@@ -41,13 +41,13 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 
 Early stage. Waiters, the kitchen and the control screen already talk to each
 other in real time through the API (REST + Socket.IO) backed by PostgreSQL.
-There is no authentication yet: every client operates on a single default
-restaurant.
+Access is controlled by session login with three roles (waiter, cook and
+manager). Every client still operates on a single default restaurant.
 
 ### Progress
 
 ```text
-Overall  [████████████░░░░░░░░]  58%  (11 of 19 milestones)
+Overall  [██████████████░░░░░░]  68%  (13 of 19 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
@@ -61,11 +61,11 @@ Update the bar and the counts whenever a milestone is checked off.
 - [x] Local environment (Docker + PostgreSQL)
 - [ ] CI (lint, type check, tests)
 
-**Data and access** (1/3)
+**Data and access** (3/3)
 
 - [x] Multi-tenant Prisma schema (`restaurant_id` on every record)
-- [ ] Cookie-based session authentication
-- [ ] Role-based permissions (waiter, cook, cashier, manager/admin)
+- [x] Cookie-based session authentication
+- [x] Role-based permissions (waiter, cook, manager; cashier arrives with billing)
 
 **Order flow** (5/5)
 
@@ -93,6 +93,8 @@ Requires Node 22+, pnpm and Docker.
 ```bash
 pnpm install
 cp .env.example .env        # never commit .env
+                            # set SEED_MANAGER_EMAIL / SEED_MANAGER_PASSWORD (10+ chars)
+                            # to create the first manager on the first run
 pnpm db:up                  # PostgreSQL via Docker
 pnpm --filter @food-stack/shared build
 pnpm --filter @food-stack/api exec prisma migrate deploy
