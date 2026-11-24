@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Plus, RotateCcw, Save, Trash2, Undo2 } from 'lucide-react';
 import {
   MAX_TABLES,
@@ -8,6 +8,7 @@ import {
   type MenuItem,
 } from '@food-stack/shared';
 import { StatusBadge } from '../components/StatusBadge';
+import { setUnsavedChanges } from '../navigation/unsaved-changes';
 import { useOrders } from '../orders/orders-store';
 import {
   addMenuItem,
@@ -279,7 +280,7 @@ export function ControlScreen() {
   const removedIds = removed.filter((id) => menu.some((item) => item.id === id));
 
   const changes = (tablesChanged ? 1 : 0) + added.length + removedIds.length;
-  const hasDraft = tablesDraft !== null || added.length > 0 || removed.length > 0;
+  const dirty = changes > 0 || tablesError !== null;
   const canSave = changes > 0 && tablesError === null && !saving;
 
   const rows: MenuRow[] = [
@@ -298,6 +299,11 @@ export function ControlScreen() {
       }),
     ),
   ];
+
+  useEffect(() => {
+    setUnsavedChanges(dirty);
+    return () => setUnsavedChanges(false);
+  }, [dirty]);
 
   const touch = () => {
     setSaved(false);
@@ -342,7 +348,7 @@ export function ControlScreen() {
   };
 
   return (
-    <div className="pb-28">
+    <div className={dirty ? 'pb-28' : undefined}>
       {saved && (
         <p
           role="status"
@@ -390,14 +396,14 @@ export function ControlScreen() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <p className="min-w-0 flex-1 text-sm text-slate-700">
-            {changes === 0
-              ? 'Nenhuma alteração pendente'
-              : `${changes} ${changes === 1 ? 'alteração não salva' : 'alterações não salvas'}`}
-          </p>
-          {hasDraft && (
+      {dirty && (
+        <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
+            <p role="status" className="min-w-0 flex-1 basis-48 text-sm text-slate-700">
+              {changes === 0
+                ? 'Corrija o número de mesas ou descarte para continuar.'
+                : `${changes} ${changes === 1 ? 'alteração não salva' : 'alterações não salvas'}. Salve ou descarte para trocar de tela.`}
+            </p>
             <button
               type="button"
               onClick={discardAll}
@@ -407,18 +413,18 @@ export function ControlScreen() {
               <RotateCcw aria-hidden className="size-5" />
               Descartar
             </button>
-          )}
-          <button
-            type="button"
-            disabled={!canSave}
-            onClick={() => void save()}
-            className={`flex min-h-12 items-center gap-2 rounded-lg bg-brand-600 px-4 font-semibold text-white active:bg-brand-700 disabled:bg-slate-300 disabled:text-slate-600 ${focusRing}`}
-          >
-            <Save aria-hidden className="size-5" />
-            {saving ? 'Salvando...' : 'Salvar alterações'}
-          </button>
+            <button
+              type="button"
+              disabled={!canSave}
+              onClick={() => void save()}
+              className={`flex min-h-12 items-center gap-2 rounded-lg bg-brand-600 px-4 font-semibold text-white active:bg-brand-700 disabled:bg-slate-300 disabled:text-slate-600 ${focusRing}`}
+            >
+              <Save aria-hidden className="size-5" />
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
