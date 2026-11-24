@@ -39,22 +39,23 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 
 ## Status
 
-Early stage. The stack below is decided; no application code exists yet.
+Early stage. The monorepo base is in place (health endpoint, PWA shell and
+first Prisma migration); no domain features exist yet.
 
 ### Progress
 
 ```text
-Overall  [███░░░░░░░░░░░░░░░░░]  16%  (3 of 19 milestones)
+Overall  [████░░░░░░░░░░░░░░░░]  21%  (4 of 19 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
 
-**Foundation** (3/6)
+**Foundation** (4/6)
 
 - [x] Product vision documented
 - [x] Tech stack decided
 - [x] Project guidelines (`CLAUDE.md`)
-- [ ] Monorepo scaffold (pnpm workspaces + shared schemas package)
+- [x] Monorepo scaffold (pnpm workspaces + shared schemas package)
 - [ ] Local environment (Docker + PostgreSQL)
 - [ ] CI (lint, type check, tests)
 
@@ -82,6 +83,25 @@ Update the bar and the counts whenever a milestone is checked off.
 - [ ] Offline order queue and resend on reconnect
 - [ ] End-to-end tests (Playwright)
 - [ ] Production deploy
+
+## Getting started
+
+Requires Node 22+, pnpm and Docker.
+
+```bash
+pnpm install
+cp .env.example .env        # never commit .env
+pnpm db:up                  # PostgreSQL via Docker
+pnpm --filter @food-stack/shared build
+pnpm --filter @food-stack/api exec prisma migrate dev
+pnpm dev:api                # http://localhost:3000/health
+pnpm dev:web                # http://localhost:5173
+```
+
+Other commands: `pnpm test`, `pnpm typecheck`, `pnpm build`.
+
+Layout: `apps/api` (NestJS), `apps/web` (React PWA) and `packages/shared`
+(Zod schemas and derived types).
 
 ## Tech stack
 
