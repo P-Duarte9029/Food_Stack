@@ -372,6 +372,8 @@ Estrutura e convenções do scaffold:
 - Variáveis de ambiente validadas com Zod em `apps/api/src/env.ts`.
 - Front: ícones com `lucide-react`; tokens de cor da marca em `@theme`
   (`apps/web/src/index.css`); navegação por hash (`#/atendente`, `#/cozinha`).
-- Telas de pedido usam dados mockados: cardápio em `apps/web/src/mocks/` e
-  pedidos em `orders/orders-store.ts` (localStorage, validado com Zod). Será
-  substituído pelo backend; o contrato de pedido vive em `packages/shared`.
+- Telas usam dados mockados em stores locais (`store/persisted-store.ts`,
+  localStorage validado com Zod): pedidos em `orders/`, cardápio e quantidade de
+  mesas em `restaurant/` (padrões iniciais em `mocks/`). Serão substituídos
+  pelo backend; os contratos vivem em `packages/shared`.
+- Telas: `#/atendente`, `#/cozinha` e `#/controle` (cardápio, mesas, histórico).
