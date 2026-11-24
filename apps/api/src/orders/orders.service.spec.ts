@@ -73,6 +73,53 @@ describe('OrdersService.create', () => {
   });
 });
 
+describe('OrdersService.create (reenvio idempotente)', () => {
+  const clientId = '6f1d2c3e-1111-4222-8333-444455556666';
+  const input = { id: clientId, table: 3, items: [{ menuItemId: 'm1', name: 'x', quantity: 2 }] };
+
+  it('devolve o pedido já criado, sem criar outro nem publicar de novo', async () => {
+    const create = vi.fn();
+    const { service, publish } = setup({
+      order: {
+        findUnique: vi.fn().mockResolvedValue({ ...record('in_preparation'), restaurantId: DEFAULT_RESTAURANT_ID }),
+        create,
+      },
+    });
+
+    const order = await service.create(DEFAULT_RESTAURANT_ID, input);
+
+    expect(order.status).toBe('in_preparation');
+    expect(create).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('recusa identificador já usado por outro restaurante', async () => {
+    const { service } = setup({
+      order: {
+        findUnique: vi.fn().mockResolvedValue({ ...record('placed'), restaurantId: 'outro' }),
+      },
+    });
+    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(ConflictException);
+  });
+
+  it('em corrida (violação de unicidade) devolve o pedido que venceu', async () => {
+    const findUnique = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ...record('placed'), restaurantId: DEFAULT_RESTAURANT_ID });
+    const { service, publish } = setup({
+      restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      order: { findUnique, create: vi.fn().mockRejectedValue({ code: 'P2002' }) },
+    });
+
+    const order = await service.create(DEFAULT_RESTAURANT_ID, input);
+
+    expect(order.id).toBe('order-1');
+    expect(publish).not.toHaveBeenCalled();
+  });
+});
+
 describe('OrdersService.advance', () => {
   it('lança NotFound para pedido inexistente', async () => {
     const { service } = setup({ order: { findFirst: vi.fn().mockResolvedValue(null) } });

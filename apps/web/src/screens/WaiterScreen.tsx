@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
 import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
 import { AttendantTabs } from '../components/AttendantTabs';
-import { placeOrder } from '../orders/orders-store';
+import { submitOrder, type SubmitResult } from '../offline/outbox';
+import { useIsConnected } from '../realtime/socket';
 
 type Quantities = Readonly<Record<string, number>>;
 
@@ -13,6 +14,8 @@ export function WaiterScreen() {
   const [table, setTable] = useState<number | null>(null);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [sentTable, setSentTable] = useState<number | null>(null);
+  const [sentResult, setSentResult] = useState<SubmitResult>('sent');
+  const connected = useIsConnected();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const menu = useMenu();
@@ -33,7 +36,7 @@ export function WaiterScreen() {
     setSending(true);
     setError(null);
     try {
-      await placeOrder({
+      const result = await submitOrder({
         table,
         items: selected.map((item) => ({
           menuItemId: item.id,
@@ -42,6 +45,7 @@ export function WaiterScreen() {
         })),
       });
       setSentTable(table);
+      setSentResult(result);
       setTable(null);
       setQuantities({});
     } catch (failure) {
@@ -65,9 +69,13 @@ export function WaiterScreen() {
       {sentTable !== null && (
         <p
           role="status"
-          className="mx-4 mt-4 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-900"
+          className={`mx-4 mt-4 rounded-lg px-4 py-3 text-sm font-medium ${
+            sentResult === 'sent' ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'
+          }`}
         >
-          Pedido da mesa {sentTable} enviado para a cozinha.{' '}
+          {sentResult === 'sent'
+            ? `Pedido da mesa ${sentTable} enviado para a cozinha.`
+            : `Sem conexão. O pedido da mesa ${sentTable} foi salvo e será enviado ao reconectar.`}{' '}
           <a href="#/atendente/enviados" className="underline">
             Acompanhar
           </a>
@@ -159,6 +167,7 @@ export function WaiterScreen() {
             {table === null ? 'Escolha uma mesa' : `Mesa ${table}`}
             <br />
             {totalUnits} {totalUnits === 1 ? 'item' : 'itens'}
+            {!connected && <span className="block text-amber-800">Offline: será enviado ao reconectar</span>}
           </p>
           <button
             type="button"

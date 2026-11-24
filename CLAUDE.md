@@ -385,6 +385,21 @@ Estrutura e convenções do scaffold:
   Senhas com scrypt (`auth/password.ts`). Guards globais: `OriginGuard`
   (anti-CSRF) e `AuthGuard` (sessão + `@Roles`; rotas abertas só com
   `@Public()`). Login com limite de tentativas em memória.
+- Fila offline (`apps/web/src/offline/outbox.ts`): todo pedido do atendente
+  passa pela fila local (localStorage por usuário) e é enviado na hora quando há
+  rede. O `id` do pedido é gerado no cliente e o `POST /orders` é idempotente
+  por esse `id` (reenvio devolve o pedido já criado). Falha de rede, 5xx, 401,
+  408 e 429 mantêm o pedido pendente (reenvio ao reconectar e a cada 15 s);
+  outras rejeições 4xx viram "falho", com o motivo, para o atendente decidir.
+  Logout fica bloqueado com pedidos pendentes.
+- Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
+  usuário (limpo no logout) e a identidade da sessão fica em cache para o app
+  abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e
+  ignora `/api` e `/socket.io`. O indicador de conexão usa `navigator.onLine`
+  além do socket.
+- Proxy: o Vite mantém o `Host` original (`changeOrigin: false`) porque o
+  `OriginGuard` o compara com o `Origin`. Atrás de um proxy reverso em produção,
+  preserve o `Host` ou liste a origem em `WEB_ORIGIN`.
 - Papéis: `waiter` (cria pedidos), `cook` (avança pedidos) e `manager` (tudo,
   inclusive cardápio, mesas e equipe). Permissões de rota ficam nos
   controllers e as de tela em `apps/web/src/auth/permissions.ts`; o servidor é

@@ -4,6 +4,7 @@ import { ROLE_LABEL, type SessionUser } from '@food-stack/shared';
 import { logout, useAuth } from './auth/auth-store';
 import { canAccess, homeScreenOf, screenFromHash, type Screen } from './auth/permissions';
 import { useHasUnsavedChanges } from './navigation/unsaved-changes';
+import { useOutbox } from './offline/outbox';
 import { useIsConnected } from './realtime/socket';
 import { ControlScreen } from './screens/ControlScreen';
 import { KitchenScreen } from './screens/KitchenScreen';
@@ -28,6 +29,7 @@ function Shell({ user }: { user: SessionUser }) {
   const allowed = canAccess(user.role, screen);
   const connected = useIsConnected();
   const locked = useHasUnsavedChanges();
+  const waitingToSend = useOutbox().length > 0;
   const tabs = TABS.filter((tab) => canAccess(user.role, tab.screen));
 
   useEffect(() => {
@@ -46,8 +48,15 @@ function Shell({ user }: { user: SessionUser }) {
             </p>
             <button
               type="button"
-              disabled={locked}
-              onClick={() => void logout()}
+              disabled={locked || waitingToSend || !connected}
+              title={
+                waitingToSend
+                  ? 'Há pedidos aguardando envio'
+                  : !connected
+                    ? 'Sem conexão com o servidor'
+                    : undefined
+              }
+              onClick={() => void logout().catch(() => undefined)}
               className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-800 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
             >
               <LogOut aria-hidden className="size-4" />
@@ -84,6 +93,7 @@ function Shell({ user }: { user: SessionUser }) {
           className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900"
         >
           Sem conexão com o servidor. Tentando reconectar...
+          {waitingToSend && ' Pedidos pendentes serão enviados ao reconectar.'}
         </p>
       )}
       <main className="mx-auto max-w-5xl">

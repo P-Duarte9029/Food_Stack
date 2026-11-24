@@ -1,9 +1,13 @@
+import { useOutbox } from '../offline/outbox';
+
 const TABS = [
   { href: '#/atendente', label: 'Novo pedido', current: (hash: string) => hash !== '#/atendente/enviados' },
   { href: '#/atendente/enviados', label: 'Pedidos enviados', current: (hash: string) => hash === '#/atendente/enviados' },
 ] as const;
 
 export function AttendantTabs() {
+  const waiting = useOutbox().length;
+
   return (
     <nav aria-label="Seções do atendente" className="flex gap-1 px-4 pt-4">
       {TABS.map(({ href, label, current }) => {
@@ -20,6 +24,14 @@ export function AttendantTabs() {
             }`}
           >
             {label}
+            {href.endsWith('enviados') && waiting > 0 && (
+              <span
+                className="ml-2 rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-950"
+                aria-label={`${waiting} aguardando envio`}
+              >
+                {waiting}
+              </span>
+            )}
           </a>
         );
       })}

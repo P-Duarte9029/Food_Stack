@@ -1,8 +1,17 @@
 import type { ZodType } from 'zod';
 
-export class ApiError extends Error {}
+/** `status` fica indefinido quando a requisição nem chegou ao servidor (offline, timeout). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+}
 
 const OFFLINE_MESSAGE = 'Sem conexão com o servidor. Tente novamente.';
+const REQUEST_TIMEOUT_MS = 10_000;
 
 let unauthorizedHandler: (() => void) | null = null;
 
@@ -29,6 +38,7 @@ export async function request<T>(
     response = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -39,10 +49,10 @@ export async function request<T>(
   const payload: unknown = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && path !== '/auth/login') unauthorizedHandler?.();
-    throw new ApiError(messageFrom(payload));
+    throw new ApiError(messageFrom(payload), response.status);
   }
 
   const parsed = schema.safeParse(payload);
-  if (!parsed.success) throw new ApiError('Resposta inesperada do servidor.');
+  if (!parsed.success) throw new ApiError('Resposta inesperada do servidor.', response.status);
   return parsed.data;
 }

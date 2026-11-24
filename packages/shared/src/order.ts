@@ -11,6 +11,8 @@ export const orderItemSchema = z.object({
 export type OrderItem = z.infer<typeof orderItemSchema>;
 
 export const createOrderInputSchema = z.object({
+  // Gerado no cliente: torna o reenvio de pedidos da fila offline idempotente.
+  id: z.string().uuid().optional(),
   table: z.number().int().positive(),
   items: z.array(orderItemSchema).min(1),
 });
