@@ -90,8 +90,8 @@ export function WaiterScreen() {
                 const quantity = quantities[item.id] ?? 0;
                 return (
                   <li key={item.id} className="flex items-center justify-between gap-3 p-3">
-                    <span className="text-slate-900">{item.name}</span>
-                    <span className="flex items-center gap-2">
+                    <span className="min-w-0 text-slate-900">{item.name}</span>
+                    <span className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"
                         aria-label={`Remover ${item.name}`}

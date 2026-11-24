@@ -23,7 +23,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <h1 className="text-xl font-bold text-brand-600">Food Stack</h1>
           <nav aria-label="Telas" className="flex gap-1">
             {TABS.map(({ view: tabView, label, icon: Icon }) => (
