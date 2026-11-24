@@ -1,6 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
-import { MAX_TABLES, createMenuItemInputSchema, tablesCountSchema } from '@food-stack/shared';
+import { Plus, RotateCcw, Save, Trash2, Undo2 } from 'lucide-react';
+import {
+  MAX_TABLES,
+  createMenuItemInputSchema,
+  tablesCountSchema,
+  type CreateMenuItemInput,
+  type MenuItem,
+} from '@food-stack/shared';
 import { StatusBadge } from '../components/StatusBadge';
 import { useOrders } from '../orders/orders-store';
 import {
@@ -22,105 +28,78 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit',
 });
 
-function TablesSection() {
-  const tablesCount = useTablesCount();
-  const [draft, setDraft] = useState<string | null>(null);
-  const value = draft ?? String(tablesCount ?? '');
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+type MenuRow = MenuItem & { state: 'saved' | 'added' | 'removed' };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    const parsed = tablesCountSchema.safeParse(Number(value));
-    if (!parsed.success) {
-      setError(`Informe um número inteiro de 1 a ${MAX_TABLES}.`);
-      setSaved(false);
-      return;
-    }
-    try {
-      await setTablesCount(parsed.data);
-      setDraft(null);
-      setError(null);
-      setSaved(true);
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Não foi possível salvar.');
-      setSaved(false);
-    }
-  };
+interface PendingItem extends CreateMenuItemInput {
+  tempId: string;
+}
 
+function TablesSection({
+  value,
+  error,
+  onChange,
+}: {
+  value: string;
+  error: string | null;
+  onChange: (value: string) => void;
+}) {
   return (
     <section aria-labelledby="mesas-titulo" className="rounded-xl border border-slate-200 bg-white p-4">
       <h2 id="mesas-titulo" className="text-lg font-bold">
         Mesas
       </h2>
-      <form onSubmit={(event) => void submit(event)} className="mt-3 space-y-3" noValidate>
-        <div>
-          <label htmlFor="mesas-qtd" className="text-sm font-medium text-slate-700">
-            Quantidade de mesas
-          </label>
-          <input
-            id="mesas-qtd"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={MAX_TABLES}
-            value={value}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setSaved(false);
-            }}
-            aria-invalid={error !== null}
-            aria-describedby={error ? 'mesas-erro' : undefined}
-            className={fieldClasses}
-          />
-          {error && (
-            <p id="mesas-erro" role="alert" className="mt-1 text-sm text-red-700">
-              {error}
-            </p>
-          )}
-        </div>
-        <button type="submit" className={`${primaryButton} w-full sm:w-auto`}>
-          <Save aria-hidden className="size-5" />
-          Salvar
-        </button>
-        {saved && (
-          <p role="status" className="text-sm font-medium text-emerald-800">
-            Salvo: {tablesCount} {tablesCount === 1 ? 'mesa' : 'mesas'}.
+      <div className="mt-3">
+        <label htmlFor="mesas-qtd" className="text-sm font-medium text-slate-700">
+          Quantidade de mesas
+        </label>
+        <input
+          id="mesas-qtd"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={MAX_TABLES}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-invalid={error !== null}
+          aria-describedby={error ? 'mesas-erro' : undefined}
+          className={fieldClasses}
+        />
+        {error && (
+          <p id="mesas-erro" role="alert" className="mt-1 text-sm text-red-700">
+            {error}
           </p>
         )}
-      </form>
+      </div>
     </section>
   );
 }
 
-function MenuSection() {
-  const menu = useMenu();
+function MenuSection({
+  rows,
+  onAdd,
+  onToggleRemoval,
+  onDiscardAdded,
+}: {
+  rows: readonly MenuRow[];
+  onAdd: (input: CreateMenuItemInput) => void;
+  onToggleRemoval: (id: string) => void;
+  onDiscardAdded: (tempId: string) => void;
+}) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const categories = [...new Set(menu.map((item) => item.category))];
+  const categories = [...new Set(rows.map((row) => row.category))];
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
     const parsed = createMenuItemInputSchema.safeParse({ name, category });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
       return;
     }
-    try {
-      await addMenuItem(parsed.data);
-      setName('');
-      setError(null);
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Não foi possível adicionar o prato.');
-    }
-  };
-
-  const remove = (id: string) => {
+    onAdd(parsed.data);
+    setName('');
     setError(null);
-    removeMenuItem(id).catch((failure: unknown) =>
-      setError(failure instanceof Error ? failure.message : 'Não foi possível remover o prato.'),
-    );
   };
 
   return (
@@ -128,7 +107,7 @@ function MenuSection() {
       <h2 id="cardapio-titulo" className="text-lg font-bold">
         Cardápio
       </h2>
-      <form onSubmit={(event) => void submit(event)} className="mt-3 space-y-3" noValidate>
+      <form onSubmit={submit} className="mt-3 space-y-3" noValidate>
         <div>
           <label htmlFor="prato-nome" className="text-sm font-medium text-slate-700">
             Nome do prato
@@ -179,11 +158,11 @@ function MenuSection() {
         )}
         <button type="submit" className={`${primaryButton} w-full sm:w-auto`}>
           <Plus aria-hidden className="size-5" />
-          Adicionar prato
+          Incluir prato
         </button>
       </form>
 
-      {menu.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="mt-4 text-sm text-slate-600">Nenhum prato cadastrado.</p>
       ) : (
         categories.map((group) => (
@@ -192,18 +171,46 @@ function MenuSection() {
               {group}
             </h3>
             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200">
-              {menu
-                .filter((item) => item.category === group)
-                .map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 p-3">
-                    <span className="min-w-0 break-words text-slate-900">{item.name}</span>
+              {rows
+                .filter((row) => row.category === group)
+                .map((row) => (
+                  <li key={row.id} className="flex items-center justify-between gap-3 p-3">
+                    <span className="min-w-0 break-words text-slate-900">
+                      <span className={row.state === 'removed' ? 'text-slate-500 line-through' : ''}>
+                        {row.name}
+                      </span>
+                      {row.state === 'added' && (
+                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">
+                          Novo
+                        </span>
+                      )}
+                      {row.state === 'removed' && (
+                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-900">
+                          Será removido
+                        </span>
+                      )}
+                    </span>
                     <button
                       type="button"
-                      aria-label={`Remover ${item.name} do cardápio`}
-                      onClick={() => remove(item.id)}
-                      className={`grid size-11 shrink-0 place-items-center rounded-lg border border-slate-300 text-red-700 ${focusRing}`}
+                      aria-label={
+                        row.state === 'removed'
+                          ? `Manter ${row.name} no cardápio`
+                          : row.state === 'added'
+                            ? `Descartar ${row.name}`
+                            : `Remover ${row.name} do cardápio`
+                      }
+                      onClick={() =>
+                        row.state === 'added' ? onDiscardAdded(row.id) : onToggleRemoval(row.id)
+                      }
+                      className={`grid size-11 shrink-0 place-items-center rounded-lg border border-slate-300 ${focusRing} ${
+                        row.state === 'removed' ? 'text-slate-800' : 'text-red-700'
+                      }`}
                     >
-                      <Trash2 aria-hidden className="size-5" />
+                      {row.state === 'removed' ? (
+                        <Undo2 aria-hidden className="size-5" />
+                      ) : (
+                        <Trash2 aria-hidden className="size-5" />
+                      )}
                     </button>
                   </li>
                 ))}
@@ -251,12 +258,166 @@ function HistorySection() {
 }
 
 export function ControlScreen() {
+  const menu = useMenu();
+  const tablesCount = useTablesCount();
+
+  const [tablesDraft, setTablesDraft] = useState<string | null>(null);
+  const [added, setAdded] = useState<readonly PendingItem[]>([]);
+  const [removed, setRemoved] = useState<readonly string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const tablesValue = tablesDraft ?? String(tablesCount ?? '');
+  const parsedTables = tablesCountSchema.safeParse(Number(tablesValue));
+  const tablesError =
+    tablesDraft !== null && !parsedTables.success
+      ? `Informe um número inteiro de 1 a ${MAX_TABLES}.`
+      : null;
+  const tablesChanged =
+    tablesDraft !== null && parsedTables.success && parsedTables.data !== tablesCount;
+  const removedIds = removed.filter((id) => menu.some((item) => item.id === id));
+
+  const changes = (tablesChanged ? 1 : 0) + added.length + removedIds.length;
+  const hasDraft = tablesDraft !== null || added.length > 0 || removed.length > 0;
+  const canSave = changes > 0 && tablesError === null && !saving;
+
+  const rows: MenuRow[] = [
+    ...menu.map(
+      (item): MenuRow => ({
+        ...item,
+        state: removedIds.includes(item.id) ? 'removed' : 'saved',
+      }),
+    ),
+    ...added.map(
+      (item): MenuRow => ({
+        id: item.tempId,
+        name: item.name,
+        category: item.category,
+        state: 'added',
+      }),
+    ),
+  ];
+
+  const touch = () => {
+    setSaved(false);
+    setSaveError(null);
+  };
+
+  const discardAll = () => {
+    touch();
+    setTablesDraft(null);
+    setAdded([]);
+    setRemoved([]);
+  };
+
+  const save = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (tablesChanged && parsedTables.success) {
+        await setTablesCount(parsedTables.data);
+        setTablesDraft(null);
+      }
+      for (const item of added) {
+        await addMenuItem({ name: item.name, category: item.category });
+        setAdded((current) => current.filter((entry) => entry.tempId !== item.tempId));
+      }
+      for (const id of removedIds) {
+        await removeMenuItem(id);
+        setRemoved((current) => current.filter((entry) => entry !== id));
+      }
+      setRemoved([]);
+      setSaved(true);
+    } catch (failure) {
+      setSaveError(
+        failure instanceof Error
+          ? `${failure.message} As alterações restantes continuam pendentes.`
+          : 'Não foi possível salvar.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:items-start">
-      <TablesSection />
-      <MenuSection />
-      <div className="min-w-0 md:col-span-2">
-        <HistorySection />
+    <div className="pb-28">
+      {saved && (
+        <p
+          role="status"
+          className="mx-4 mt-4 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-900"
+        >
+          Alterações salvas.
+        </p>
+      )}
+      {saveError && (
+        <p
+          role="alert"
+          className="mx-4 mt-4 rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-900"
+        >
+          {saveError}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:items-start">
+        <TablesSection
+          value={tablesValue}
+          error={tablesError}
+          onChange={(value) => {
+            touch();
+            setTablesDraft(value);
+          }}
+        />
+        <MenuSection
+          rows={rows}
+          onAdd={(input) => {
+            touch();
+            setAdded((current) => [...current, { ...input, tempId: crypto.randomUUID() }]);
+          }}
+          onToggleRemoval={(id) => {
+            touch();
+            setRemoved((current) =>
+              current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id],
+            );
+          }}
+          onDiscardAdded={(tempId) => {
+            touch();
+            setAdded((current) => current.filter((entry) => entry.tempId !== tempId));
+          }}
+        />
+        <div className="min-w-0 md:col-span-2">
+          <HistorySection />
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
+        <div className="mx-auto flex max-w-5xl items-center gap-3">
+          <p className="min-w-0 flex-1 text-sm text-slate-700">
+            {changes === 0
+              ? 'Nenhuma alteração pendente'
+              : `${changes} ${changes === 1 ? 'alteração não salva' : 'alterações não salvas'}`}
+          </p>
+          {hasDraft && (
+            <button
+              type="button"
+              onClick={discardAll}
+              disabled={saving}
+              className={`flex min-h-12 items-center gap-2 rounded-lg border border-slate-300 px-3 font-semibold text-slate-800 disabled:opacity-40 ${focusRing}`}
+            >
+              <RotateCcw aria-hidden className="size-5" />
+              Descartar
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => void save()}
+            className={`flex min-h-12 items-center gap-2 rounded-lg bg-brand-600 px-4 font-semibold text-white active:bg-brand-700 disabled:bg-slate-300 disabled:text-slate-600 ${focusRing}`}
+          >
+            <Save aria-hidden className="size-5" />
+            {saving ? 'Salvando...' : 'Salvar alterações'}
+          </button>
+        </div>
       </div>
     </div>
   );
