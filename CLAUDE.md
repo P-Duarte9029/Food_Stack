@@ -372,8 +372,13 @@ Estrutura e convenções do scaffold:
 - Variáveis de ambiente validadas com Zod em `apps/api/src/env.ts`.
 - Front: ícones com `lucide-react`; tokens de cor da marca em `@theme`
   (`apps/web/src/index.css`); navegação por hash (`#/atendente`, `#/cozinha`).
-- Telas usam dados mockados em stores locais (`store/persisted-store.ts`,
-  localStorage validado com Zod): pedidos em `orders/`, cardápio e quantidade de
-  mesas em `restaurant/` (padrões iniciais em `mocks/`). Serão substituídos
-  pelo backend; os contratos vivem em `packages/shared`.
+- Front consome a API: `api/client.ts` (fetch + Zod), `realtime/socket.ts`
+  (Socket.IO) e `store/remote-store.ts` (estado do servidor, recarregado a cada
+  reconexão). Stores de domínio em `orders/` e `restaurant/`. O Vite faz proxy de
+  `/api` e `/socket.io` para a API (mesma origem, funciona no celular via LAN).
+- API sob o prefixo `/api`; módulos `menu`, `orders`, `restaurant` e `realtime`
+  (gateway Socket.IO). Eventos em `REALTIME_EVENTS` (`packages/shared`).
+  O servidor é a fonte da verdade: valida mesa e itens e resolve nomes pelo
+  cardápio. Sem autenticação ainda: tudo opera no restaurante padrão
+  (`DEFAULT_RESTAURANT_ID`), mas todo registro já tem `restaurantId`.
 - Telas: `#/atendente`, `#/cozinha` e `#/controle` (cardápio, mesas, histórico).

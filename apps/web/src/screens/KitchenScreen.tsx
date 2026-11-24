@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Clock } from 'lucide-react';
 import type { Order, OrderStatus } from '@food-stack/shared';
 import { StatusBadge } from '../components/StatusBadge';
@@ -9,6 +10,7 @@ const COLUMNS: readonly OrderStatus[] = ['placed', 'in_preparation', 'ready'];
 
 function OrderCard({ order }: { order: Order }) {
   const minutes = useElapsedMinutes(order.createdAt);
+  const [error, setError] = useState<string | null>(null);
   const action = order.status === 'ready' ? null : ADVANCE_LABEL[order.status];
 
   return (
@@ -32,13 +34,23 @@ function OrderCard({ order }: { order: Order }) {
         {action && (
           <button
             type="button"
-            onClick={() => advanceOrder(order.id)}
+            onClick={() => {
+              setError(null);
+              advanceOrder(order.id).catch((failure: unknown) =>
+                setError(failure instanceof Error ? failure.message : 'Falha ao atualizar o pedido.'),
+              );
+            }}
             className="min-h-12 rounded-lg bg-brand-600 px-4 font-semibold text-white active:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
           >
             {action}
           </button>
         )}
       </div>
+      {error && (
+        <p role="alert" className="mt-3 text-sm font-medium text-red-800">
+          {error}
+        </p>
+      )}
     </li>
   );
 }

@@ -1,38 +1,55 @@
 import {
-  createMenuItemInputSchema,
+  REALTIME_EVENTS,
   menuItemSchema,
-  tablesCountSchema,
+  restaurantSettingsSchema,
   type CreateMenuItemInput,
   type MenuItem,
 } from '@food-stack/shared';
 import { z } from 'zod';
-import { DEFAULT_MENU, DEFAULT_TABLES_COUNT } from '../mocks/menu';
-import { createPersistedStore } from '../store/persisted-store';
+import { request } from '../api/client';
+import { socket } from '../realtime/socket';
+import { createRemoteStore } from '../store/remote-store';
 
-const menuStore = createPersistedStore<MenuItem[]>(
-  'food-stack:mock-menu',
-  z.array(menuItemSchema),
-  DEFAULT_MENU,
+const menuSchema = z.array(menuItemSchema);
+
+const menuStore = createRemoteStore<MenuItem[]>([], () => request('GET', '/menu', menuSchema));
+
+const settingsStore = createRemoteStore<number | null>(null, () =>
+  request('GET', '/restaurant/settings', restaurantSettingsSchema).then(
+    (settings) => settings.tablesCount,
+  ),
 );
 
-const tablesStore = createPersistedStore<number>(
-  'food-stack:mock-tables',
-  tablesCountSchema,
-  DEFAULT_TABLES_COUNT,
-);
+socket.on(REALTIME_EVENTS.menuChanged, (payload: unknown) => {
+  const parsed = menuSchema.safeParse(payload);
+  if (parsed.success) menuStore.set(parsed.data);
+});
+
+socket.on(REALTIME_EVENTS.settingsChanged, (payload: unknown) => {
+  const parsed = restaurantSettingsSchema.safeParse(payload);
+  if (parsed.success) settingsStore.set(parsed.data.tablesCount);
+});
 
 export const useMenu = menuStore.use;
-export const useTablesCount = tablesStore.use;
+export const useMenuLoaded = menuStore.useLoaded;
+export const useTablesCount = settingsStore.use;
 
-export function addMenuItem(input: CreateMenuItemInput): void {
-  const data = createMenuItemInputSchema.parse(input);
-  menuStore.set([...menuStore.get(), { ...data, id: crypto.randomUUID() }]);
+const reloadMenu = async (): Promise<void> =>
+  menuStore.set(await request('GET', '/menu', menuSchema));
+
+export async function addMenuItem(input: CreateMenuItemInput): Promise<void> {
+  await request('POST', '/menu', menuItemSchema, input);
+  await reloadMenu();
 }
 
-export function removeMenuItem(id: string): void {
-  menuStore.set(menuStore.get().filter((item) => item.id !== id));
+export async function removeMenuItem(id: string): Promise<void> {
+  await request('DELETE', `/menu/${id}`, z.null());
+  await reloadMenu();
 }
 
-export function setTablesCount(count: number): void {
-  tablesStore.set(tablesCountSchema.parse(count));
+export async function setTablesCount(tablesCount: number): Promise<void> {
+  const settings = await request('PUT', '/restaurant/settings', restaurantSettingsSchema, {
+    tablesCount,
+  });
+  settingsStore.set(settings.tablesCount);
 }

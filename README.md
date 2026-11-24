@@ -39,39 +39,41 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 
 ## Status
 
-Early stage. The monorepo base is in place (health endpoint, PWA shell and
-first Prisma migration); no domain features exist yet.
+Early stage. Waiters, the kitchen and the control screen already talk to each
+other in real time through the API (REST + Socket.IO) backed by PostgreSQL.
+There is no authentication yet: every client operates on a single default
+restaurant.
 
 ### Progress
 
 ```text
-Overall  [████░░░░░░░░░░░░░░░░]  21%  (4 of 19 milestones)
+Overall  [████████████░░░░░░░░]  58%  (11 of 19 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
 
-**Foundation** (4/6)
+**Foundation** (5/6)
 
 - [x] Product vision documented
 - [x] Tech stack decided
 - [x] Project guidelines (`CLAUDE.md`)
 - [x] Monorepo scaffold (pnpm workspaces + shared schemas package)
-- [ ] Local environment (Docker + PostgreSQL)
+- [x] Local environment (Docker + PostgreSQL)
 - [ ] CI (lint, type check, tests)
 
-**Data and access** (0/3)
+**Data and access** (1/3)
 
-- [ ] Multi-tenant Prisma schema (`restaurant_id` on every record)
+- [x] Multi-tenant Prisma schema (`restaurant_id` on every record)
 - [ ] Cookie-based session authentication
 - [ ] Role-based permissions (waiter, cook, cashier, manager/admin)
 
-**Order flow** (0/5)
+**Order flow** (5/5)
 
-- [ ] Menu management
-- [ ] Table management
-- [ ] Waiter order entry
-- [ ] Real-time kitchen screen
-- [ ] "Ready" notification to the waiter
+- [x] Menu management
+- [x] Table management
+- [x] Waiter order entry
+- [x] Real-time kitchen screen
+- [x] "Ready" notification to the waiter
 
 **Billing** (0/2)
 
@@ -93,9 +95,9 @@ pnpm install
 cp .env.example .env        # never commit .env
 pnpm db:up                  # PostgreSQL via Docker
 pnpm --filter @food-stack/shared build
-pnpm --filter @food-stack/api exec prisma migrate dev
-pnpm dev:api                # http://localhost:3000/health
-pnpm dev:web                # http://localhost:5173
+pnpm --filter @food-stack/api exec prisma migrate deploy
+pnpm dev:api                # http://localhost:3000/api/health
+pnpm dev:web                # http://localhost:5173 (proxies /api and /socket.io to the API)
 ```
 
 Other commands: `pnpm test`, `pnpm typecheck`, `pnpm build`.
