@@ -37,7 +37,7 @@ export function App() {
                 key={tabView}
                 href={`#/${tabView}`}
                 aria-current={view === tabView ? 'page' : undefined}
-                className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-semibold sm:flex-none sm:gap-2 sm:px-3 sm:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${
+                className={`flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-1.5 text-sm font-semibold sm:flex-none sm:gap-2 sm:px-3 sm:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${
                   view === tabView ? 'bg-brand-50 text-brand-700' : 'text-slate-700'
                 }`}
               >

@@ -22,7 +22,7 @@ function OrderCard({ order }: { order: Order }) {
       </div>
       <ul className="mt-3 space-y-1 text-lg text-slate-900">
         {order.items.map((item) => (
-          <li key={item.menuItemId}>
+          <li key={item.menuItemId} className="break-words">
             <span className="font-bold tabular-nums">{item.quantity}x</span> {item.name}
           </li>
         ))}
@@ -47,7 +47,7 @@ export function KitchenScreen() {
   const orders = useOrders();
 
   return (
-    <div className="grid gap-6 p-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 p-4 md:grid-cols-3">
       {COLUMNS.map((status) => {
         const column = orders.filter((order) => order.status === status);
         return (

@@ -90,7 +90,7 @@ export function WaiterScreen() {
         )}
         {categories.map((category) => (
           <div key={category} className="mt-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+            <h3 className="break-words text-sm font-semibold uppercase tracking-wide text-slate-600">
               {category}
             </h3>
             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
@@ -98,7 +98,7 @@ export function WaiterScreen() {
                 const quantity = quantities[item.id] ?? 0;
                 return (
                   <li key={item.id} className="flex items-center justify-between gap-3 p-3">
-                    <span className="min-w-0 text-slate-900">{item.name}</span>
+                    <span className="min-w-0 break-words text-slate-900">{item.name}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"

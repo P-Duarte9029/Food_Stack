@@ -142,7 +142,7 @@ function MenuSection() {
                   type="button"
                   aria-pressed={category.trim() === option}
                   onClick={() => setCategory(option)}
-                  className={`min-h-11 rounded-full border px-3 text-sm font-medium ${focusRing} ${
+                  className={`min-h-11 max-w-full break-words rounded-full border px-3 text-sm font-medium ${focusRing} ${
                     category.trim() === option
                       ? 'border-brand-700 bg-brand-50 text-brand-700'
                       : 'border-slate-300 bg-white text-slate-800'
@@ -170,13 +170,15 @@ function MenuSection() {
       ) : (
         categories.map((group) => (
           <div key={group} className="mt-5">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">{group}</h3>
+            <h3 className="break-words text-sm font-semibold uppercase tracking-wide text-slate-600">
+              {group}
+            </h3>
             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200">
               {menu
                 .filter((item) => item.category === group)
                 .map((item) => (
                   <li key={item.id} className="flex items-center justify-between gap-3 p-3">
-                    <span className="min-w-0 text-slate-900">{item.name}</span>
+                    <span className="min-w-0 break-words text-slate-900">{item.name}</span>
                     <button
                       type="button"
                       aria-label={`Remover ${item.name} do cardápio`}
@@ -219,7 +221,7 @@ function HistorySection() {
                 </p>
                 <StatusBadge status={order.status} />
               </div>
-              <p className="mt-1 text-sm text-slate-700">
+              <p className="mt-1 break-words text-sm text-slate-700">
                 {order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}
               </p>
             </li>
@@ -232,10 +234,10 @@ function HistorySection() {
 
 export function ControlScreen() {
   return (
-    <div className="grid gap-4 p-4 md:grid-cols-2 md:items-start">
+    <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:items-start">
       <TablesSection />
       <MenuSection />
-      <div className="md:col-span-2">
+      <div className="min-w-0 md:col-span-2">
         <HistorySection />
       </div>
     </div>
