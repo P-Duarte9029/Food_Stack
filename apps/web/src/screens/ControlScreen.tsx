@@ -130,16 +130,29 @@ function MenuSection() {
           <input
             id="prato-categoria"
             type="text"
-            list="categorias-existentes"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
             className={fieldClasses}
           />
-          <datalist id="categorias-existentes">
-            {categories.map((option) => (
-              <option key={option} value={option} />
-            ))}
-          </datalist>
+          {categories.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Categorias existentes">
+              {categories.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={category.trim() === option}
+                  onClick={() => setCategory(option)}
+                  className={`min-h-11 rounded-full border px-3 text-sm font-medium ${focusRing} ${
+                    category.trim() === option
+                      ? 'border-brand-700 bg-brand-50 text-brand-700'
+                      : 'border-slate-300 bg-white text-slate-800'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {error && (
           <p role="alert" className="text-sm text-red-700">
