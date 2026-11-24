@@ -1,0 +1,15 @@
+{
+  "name": "food-stack",
+  "private": true,
+  "packageManager": "pnpm@10.34.4",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev:api": "pnpm --filter @food-stack/api dev",
+    "dev:web": "pnpm --filter @food-stack/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down"
+  }
+}

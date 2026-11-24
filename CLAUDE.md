@@ -361,3 +361,12 @@ Diretrizes de arquitetura:
 - O PWA deve enfileirar pedidos localmente quando offline e reenviá-los ao
   reconectar.
 - Fora do MVP: NFC-e e Pix. Modelar a cobrança para aceitá-los depois.
+
+Estrutura e convenções do scaffold:
+
+- `apps/api` (NestJS, CommonJS), `apps/web` (React + Vite + Tailwind v4 + PWA) e
+  `packages/shared` (schemas Zod e tipos derivados, buildado com tsup).
+- TypeScript fixado em 5.9 (TS 7 não tem a compiler API que o tsup precisa).
+- Prisma 7: `prisma.config.ts` lê o `.env` da raiz; o client é gerado em
+  `apps/api/src/generated` (não versionado) e usa o adapter `pg`.
+- Variáveis de ambiente validadas com Zod em `apps/api/src/env.ts`.
