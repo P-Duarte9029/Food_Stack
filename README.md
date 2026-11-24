@@ -41,6 +41,48 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 
 Early stage. The stack below is decided; no application code exists yet.
 
+### Progress
+
+```text
+Overall  [███░░░░░░░░░░░░░░░░░]  16%  (3 of 19 milestones)
+```
+
+Update the bar and the counts whenever a milestone is checked off.
+
+**Foundation** (3/6)
+
+- [x] Product vision documented
+- [x] Tech stack decided
+- [x] Project guidelines (`CLAUDE.md`)
+- [ ] Monorepo scaffold (pnpm workspaces + shared schemas package)
+- [ ] Local environment (Docker + PostgreSQL)
+- [ ] CI (lint, type check, tests)
+
+**Data and access** (0/3)
+
+- [ ] Multi-tenant Prisma schema (`restaurant_id` on every record)
+- [ ] Cookie-based session authentication
+- [ ] Role-based permissions (waiter, cook, cashier, manager/admin)
+
+**Order flow** (0/5)
+
+- [ ] Menu management
+- [ ] Table management
+- [ ] Waiter order entry
+- [ ] Real-time kitchen screen
+- [ ] "Ready" notification to the waiter
+
+**Billing** (0/2)
+
+- [ ] Table bill closing by the cashier
+- [ ] Billing model prepared for NFC-e and Pix
+
+**Offline and release** (0/3)
+
+- [ ] Offline order queue and resend on reconnect
+- [ ] End-to-end tests (Playwright)
+- [ ] Production deploy
+
 ## Tech stack
 
 A modular monolith written entirely in TypeScript, built as a PWA so it runs on
