@@ -379,6 +379,17 @@ Estrutura e convenções do scaffold:
 - API sob o prefixo `/api`; módulos `menu`, `orders`, `restaurant` e `realtime`
   (gateway Socket.IO). Eventos em `REALTIME_EVENTS` (`packages/shared`).
   O servidor é a fonte da verdade: valida mesa e itens e resolve nomes pelo
-  cardápio. Sem autenticação ainda: tudo opera no restaurante padrão
-  (`DEFAULT_RESTAURANT_ID`), mas todo registro já tem `restaurantId`.
+  cardápio.
+- Autenticação: sessão em cookie `HttpOnly` + `SameSite=Lax` (`fs_session`),
+  token aleatório guardado só como hash SHA-256 na tabela `sessions` (12 h).
+  Senhas com scrypt (`auth/password.ts`). Guards globais: `OriginGuard`
+  (anti-CSRF) e `AuthGuard` (sessão + `@Roles`; rotas abertas só com
+  `@Public()`). Login com limite de tentativas em memória.
+- Papéis: `waiter` (cria pedidos), `cook` (avança pedidos) e `manager` (tudo,
+  inclusive cardápio, mesas e equipe). Permissões de rota ficam nos
+  controllers e as de tela em `apps/web/src/auth/permissions.ts`; o servidor é
+  quem decide, a UI só esconde. O socket autentica pelo cookie no handshake.
+- Todo serviço recebe o `restaurantId` do usuário logado; o restaurante padrão
+  e o primeiro gerente (`SEED_MANAGER_*` no `.env`) são criados por
+  `bootstrap.service.ts`.
 - Telas: `#/atendente`, `#/cozinha` e `#/controle` (cardápio, mesas, histórico).

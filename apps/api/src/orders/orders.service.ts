@@ -12,7 +12,6 @@ import {
 } from '@food-stack/shared';
 import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { DEFAULT_RESTAURANT_ID } from '../restaurant/default-restaurant';
 import { toOrder } from './order.mapper';
 
 const orderInclude = {
@@ -26,18 +25,18 @@ export class OrdersService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  async list(): Promise<Order[]> {
+  async list(restaurantId: string): Promise<Order[]> {
     const records = await this.prisma.order.findMany({
-      where: { restaurantId: DEFAULT_RESTAURANT_ID },
+      where: { restaurantId },
       orderBy: { createdAt: 'asc' },
       include: orderInclude,
     });
     return records.map(toOrder);
   }
 
-  async create(input: CreateOrderInput): Promise<Order> {
+  async create(restaurantId: string, input: CreateOrderInput): Promise<Order> {
     const restaurant = await this.prisma.restaurant.findUniqueOrThrow({
-      where: { id: DEFAULT_RESTAURANT_ID },
+      where: { id: restaurantId },
       select: { tablesCount: true },
     });
     if (input.table > restaurant.tablesCount) {
@@ -49,7 +48,7 @@ export class OrdersService {
       requested.set(item.menuItemId, (requested.get(item.menuItemId) ?? 0) + item.quantity);
     }
     const menuItems = await this.prisma.menuItem.findMany({
-      where: { restaurantId: DEFAULT_RESTAURANT_ID, id: { in: [...requested.keys()] } },
+      where: { restaurantId, id: { in: [...requested.keys()] } },
       select: { id: true, name: true },
     });
     if (menuItems.length !== requested.size) {
@@ -58,7 +57,7 @@ export class OrdersService {
 
     const record = await this.prisma.order.create({
       data: {
-        restaurantId: DEFAULT_RESTAURANT_ID,
+        restaurantId,
         table: input.table,
         items: {
           create: menuItems.map((menuItem) => ({
@@ -71,13 +70,13 @@ export class OrdersService {
       include: orderInclude,
     });
     const order = toOrder(record);
-    this.realtime.publish(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderCreated, order);
+    this.realtime.publish(restaurantId, REALTIME_EVENTS.orderCreated, order);
     return order;
   }
 
-  async advance(id: string): Promise<Order> {
+  async advance(restaurantId: string, id: string): Promise<Order> {
     const current = await this.prisma.order.findFirst({
-      where: { id, restaurantId: DEFAULT_RESTAURANT_ID },
+      where: { id, restaurantId },
       select: { status: true },
     });
     if (!current) throw new NotFoundException('Pedido não encontrado');
@@ -86,7 +85,7 @@ export class OrdersService {
     if (!next) throw new ConflictException('O pedido já está pronto');
 
     const { count } = await this.prisma.order.updateMany({
-      where: { id, restaurantId: DEFAULT_RESTAURANT_ID, status: current.status },
+      where: { id, restaurantId, status: current.status },
       data: { status: next },
     });
     if (count === 0) throw new ConflictException('O status do pedido mudou, atualize a tela');
@@ -96,7 +95,7 @@ export class OrdersService {
       include: orderInclude,
     });
     const order = toOrder(record);
-    this.realtime.publish(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderUpdated, order);
+    this.realtime.publish(restaurantId, REALTIME_EVENTS.orderUpdated, order);
     return order;
   }
 }
