@@ -1,13 +1,8 @@
-import type { OrderItem } from '@food-stack/shared';
+import type { MenuItem } from '@food-stack/shared';
 
-export interface MenuItem extends Pick<OrderItem, 'name'> {
-  id: string;
-  category: string;
-}
+export const DEFAULT_TABLES_COUNT = 12;
 
-export const TABLES = Array.from({ length: 12 }, (_, index) => index + 1);
-
-export const MENU: readonly MenuItem[] = [
+export const DEFAULT_MENU: MenuItem[] = [
   { id: 'pf-frango', name: 'Prato feito de frango', category: 'Pratos' },
   { id: 'pf-bife', name: 'Prato feito de bife', category: 'Pratos' },
   { id: 'feijoada', name: 'Feijoada individual', category: 'Pratos' },

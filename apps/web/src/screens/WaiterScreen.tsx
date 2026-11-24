@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
-import { MENU, TABLES } from '../mocks/menu';
+import { useMenu, useTablesCount } from '../restaurant/restaurant-store';
 import { placeOrder, useOrders } from '../orders/orders-store';
 import { StatusBadge } from '../components/StatusBadge';
 
 type Quantities = Readonly<Record<string, number>>;
 
-const CATEGORIES = [...new Set(MENU.map((item) => item.category))];
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
 
@@ -15,8 +14,12 @@ export function WaiterScreen() {
   const [quantities, setQuantities] = useState<Quantities>({});
   const [sentTable, setSentTable] = useState<number | null>(null);
   const orders = useOrders();
+  const menu = useMenu();
+  const tablesCount = useTablesCount();
+  const tables = Array.from({ length: tablesCount }, (_, index) => index + 1);
+  const categories = [...new Set(menu.map((item) => item.category))];
 
-  const selected = MENU.filter((item) => (quantities[item.id] ?? 0) > 0);
+  const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
   const totalUnits = selected.reduce((sum, item) => sum + (quantities[item.id] ?? 0), 0);
   const canSend = table !== null && totalUnits > 0;
   const recentOrders = [...orders].reverse().slice(0, 6);
@@ -55,7 +58,7 @@ export function WaiterScreen() {
           1. Mesa
         </h2>
         <div className="mt-3 grid grid-cols-4 gap-2">
-          {TABLES.map((number) => (
+          {tables.map((number) => (
             <button
               key={number}
               type="button"
@@ -80,13 +83,18 @@ export function WaiterScreen() {
         <h2 id="itens-titulo" className="text-lg font-bold text-slate-900">
           2. Itens
         </h2>
-        {CATEGORIES.map((category) => (
+        {categories.length === 0 && (
+          <p className="mt-2 text-sm text-slate-600">
+            Cardápio vazio. Cadastre pratos na tela Controle.
+          </p>
+        )}
+        {categories.map((category) => (
           <div key={category} className="mt-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
               {category}
             </h3>
             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-              {MENU.filter((item) => item.category === category).map((item) => {
+              {menu.filter((item) => item.category === category).map((item) => {
                 const quantity = quantities[item.id] ?? 0;
                 return (
                   <li key={item.id} className="flex items-center justify-between gap-3 p-3">
