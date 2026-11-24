@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { useIsConnected } from './realtime/socket';
 import { ChefHat, ConciergeBell, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import { ControlScreen } from './screens/ControlScreen';
 import { KitchenScreen } from './screens/KitchenScreen';
@@ -25,6 +26,7 @@ const currentView = (): View => {
 
 export function App() {
   const view = useSyncExternalStore(subscribe, currentView);
+  const connected = useIsConnected();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -48,6 +50,14 @@ export function App() {
           </nav>
         </div>
       </header>
+      {!connected && (
+        <p
+          role="status"
+          className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900"
+        >
+          Sem conexão com o servidor. Tentando reconectar...
+        </p>
+      )}
       <main className="mx-auto max-w-5xl">
         {view === 'atendente' && <WaiterScreen />}
         {view === 'cozinha' && <KitchenScreen />}

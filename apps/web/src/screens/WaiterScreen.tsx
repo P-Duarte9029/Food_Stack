@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
-import { useMenu, useTablesCount } from '../restaurant/restaurant-store';
+import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
 import { placeOrder, useOrders } from '../orders/orders-store';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -13,10 +13,13 @@ export function WaiterScreen() {
   const [table, setTable] = useState<number | null>(null);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [sentTable, setSentTable] = useState<number | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const orders = useOrders();
   const menu = useMenu();
+  const menuLoaded = useMenuLoaded();
   const tablesCount = useTablesCount();
-  const tables = Array.from({ length: tablesCount }, (_, index) => index + 1);
+  const tables = Array.from({ length: tablesCount ?? 0 }, (_, index) => index + 1);
   const categories = [...new Set(menu.map((item) => item.category))];
 
   const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
@@ -27,23 +30,39 @@ export function WaiterScreen() {
   const change = (id: string, delta: number) =>
     setQuantities((current) => ({ ...current, [id]: Math.max(0, (current[id] ?? 0) + delta) }));
 
-  const send = () => {
-    if (table === null || totalUnits === 0) return;
-    placeOrder({
-      table,
-      items: selected.map((item) => ({
-        menuItemId: item.id,
-        name: item.name,
-        quantity: quantities[item.id] ?? 0,
-      })),
-    });
-    setSentTable(table);
-    setTable(null);
-    setQuantities({});
+  const send = async () => {
+    if (table === null || totalUnits === 0 || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      await placeOrder({
+        table,
+        items: selected.map((item) => ({
+          menuItemId: item.id,
+          name: item.name,
+          quantity: quantities[item.id] ?? 0,
+        })),
+      });
+      setSentTable(table);
+      setTable(null);
+      setQuantities({});
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Não foi possível enviar o pedido.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <div className="mx-auto max-w-md pb-28">
+      {error && (
+        <p
+          role="alert"
+          className="mx-4 mt-4 rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-900"
+        >
+          {error}
+        </p>
+      )}
       {sentTable !== null && (
         <p
           role="status"
@@ -83,7 +102,7 @@ export function WaiterScreen() {
         <h2 id="itens-titulo" className="text-lg font-bold text-slate-900">
           2. Itens
         </h2>
-        {categories.length === 0 && (
+        {menuLoaded && categories.length === 0 && (
           <p className="mt-2 text-sm text-slate-600">
             Cardápio vazio. Cadastre pratos na tela Controle.
           </p>
@@ -162,8 +181,8 @@ export function WaiterScreen() {
           </p>
           <button
             type="button"
-            disabled={!canSend}
-            onClick={send}
+            disabled={!canSend || sending}
+            onClick={() => void send()}
             className={`flex min-h-12 items-center gap-2 rounded-lg bg-brand-600 px-5 font-semibold text-white active:bg-brand-700 disabled:bg-slate-300 disabled:text-slate-600 ${focusRing}`}
           >
             <Send aria-hidden className="size-5" />

@@ -24,11 +24,12 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
 
 function TablesSection() {
   const tablesCount = useTablesCount();
-  const [value, setValue] = useState(String(tablesCount));
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? String(tablesCount ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     const parsed = tablesCountSchema.safeParse(Number(value));
     if (!parsed.success) {
@@ -36,9 +37,15 @@ function TablesSection() {
       setSaved(false);
       return;
     }
-    setTablesCount(parsed.data);
-    setError(null);
-    setSaved(true);
+    try {
+      await setTablesCount(parsed.data);
+      setDraft(null);
+      setError(null);
+      setSaved(true);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Não foi possível salvar.');
+      setSaved(false);
+    }
   };
 
   return (
@@ -46,7 +53,7 @@ function TablesSection() {
       <h2 id="mesas-titulo" className="text-lg font-bold">
         Mesas
       </h2>
-      <form onSubmit={submit} className="mt-3 space-y-3" noValidate>
+      <form onSubmit={(event) => void submit(event)} className="mt-3 space-y-3" noValidate>
         <div>
           <label htmlFor="mesas-qtd" className="text-sm font-medium text-slate-700">
             Quantidade de mesas
@@ -59,7 +66,7 @@ function TablesSection() {
             max={MAX_TABLES}
             value={value}
             onChange={(event) => {
-              setValue(event.target.value);
+              setDraft(event.target.value);
               setSaved(false);
             }}
             aria-invalid={error !== null}
@@ -93,16 +100,27 @@ function MenuSection() {
   const [error, setError] = useState<string | null>(null);
   const categories = [...new Set(menu.map((item) => item.category))];
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     const parsed = createMenuItemInputSchema.safeParse({ name, category });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
       return;
     }
-    addMenuItem(parsed.data);
-    setName('');
+    try {
+      await addMenuItem(parsed.data);
+      setName('');
+      setError(null);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Não foi possível adicionar o prato.');
+    }
+  };
+
+  const remove = (id: string) => {
     setError(null);
+    removeMenuItem(id).catch((failure: unknown) =>
+      setError(failure instanceof Error ? failure.message : 'Não foi possível remover o prato.'),
+    );
   };
 
   return (
@@ -110,7 +128,7 @@ function MenuSection() {
       <h2 id="cardapio-titulo" className="text-lg font-bold">
         Cardápio
       </h2>
-      <form onSubmit={submit} className="mt-3 space-y-3" noValidate>
+      <form onSubmit={(event) => void submit(event)} className="mt-3 space-y-3" noValidate>
         <div>
           <label htmlFor="prato-nome" className="text-sm font-medium text-slate-700">
             Nome do prato
@@ -182,7 +200,7 @@ function MenuSection() {
                     <button
                       type="button"
                       aria-label={`Remover ${item.name} do cardápio`}
-                      onClick={() => removeMenuItem(item.id)}
+                      onClick={() => remove(item.id)}
                       className={`grid size-11 shrink-0 place-items-center rounded-lg border border-slate-300 text-red-700 ${focusRing}`}
                     >
                       <Trash2 aria-hidden className="size-5" />

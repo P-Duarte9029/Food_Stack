@@ -8,10 +8,60 @@ datasource db {
   provider = "postgresql"
 }
 
+enum OrderStatus {
+  placed
+  in_preparation
+  ready
+}
+
 model Restaurant {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  name        String
+  tablesCount Int      @default(12)
+  createdAt   DateTime @default(now())
+
+  menuItems MenuItem[]
+  orders    Order[]
 
   @@map("restaurants")
+}
+
+model MenuItem {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  category     String
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId])
+  @@map("menu_items")
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  restaurantId String
+  table        Int
+  status       OrderStatus @default(placed)
+  createdAt    DateTime    @default(now())
+
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id])
+  items      OrderItem[]
+
+  @@index([restaurantId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String @id @default(uuid())
+  orderId    String
+  menuItemId String
+  name       String
+  quantity   Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
 }
