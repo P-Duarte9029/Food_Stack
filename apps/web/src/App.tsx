@@ -3,6 +3,7 @@ import { useIsConnected } from './realtime/socket';
 import { ChefHat, ConciergeBell, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import { ControlScreen } from './screens/ControlScreen';
 import { KitchenScreen } from './screens/KitchenScreen';
+import { SentOrdersScreen } from './screens/SentOrdersScreen';
 import { WaiterScreen } from './screens/WaiterScreen';
 
 type View = 'atendente' | 'cozinha' | 'controle';
@@ -18,14 +19,15 @@ const subscribe = (listener: () => void): (() => void) => {
   return () => window.removeEventListener('hashchange', listener);
 };
 
-const currentView = (): View => {
-  if (location.hash === '#/cozinha') return 'cozinha';
-  if (location.hash === '#/controle') return 'controle';
+const viewFrom = (hash: string): View => {
+  if (hash === '#/cozinha') return 'cozinha';
+  if (hash === '#/controle') return 'controle';
   return 'atendente';
 };
 
 export function App() {
-  const view = useSyncExternalStore(subscribe, currentView);
+  const hash = useSyncExternalStore(subscribe, () => location.hash);
+  const view = viewFrom(hash);
   const connected = useIsConnected();
 
   return (
@@ -59,7 +61,8 @@ export function App() {
         </p>
       )}
       <main className="mx-auto max-w-5xl">
-        {view === 'atendente' && <WaiterScreen />}
+        {view === 'atendente' &&
+          (hash === '#/atendente/enviados' ? <SentOrdersScreen /> : <WaiterScreen />)}
         {view === 'cozinha' && <KitchenScreen />}
         {view === 'controle' && <ControlScreen />}
       </main>

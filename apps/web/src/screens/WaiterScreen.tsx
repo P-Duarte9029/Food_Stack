@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
 import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
-import { placeOrder, useOrders } from '../orders/orders-store';
-import { StatusBadge } from '../components/StatusBadge';
+import { AttendantTabs } from '../components/AttendantTabs';
+import { placeOrder } from '../orders/orders-store';
 
 type Quantities = Readonly<Record<string, number>>;
 
@@ -15,7 +15,6 @@ export function WaiterScreen() {
   const [sentTable, setSentTable] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const orders = useOrders();
   const menu = useMenu();
   const menuLoaded = useMenuLoaded();
   const tablesCount = useTablesCount();
@@ -25,7 +24,6 @@ export function WaiterScreen() {
   const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
   const totalUnits = selected.reduce((sum, item) => sum + (quantities[item.id] ?? 0), 0);
   const canSend = table !== null && totalUnits > 0;
-  const recentOrders = [...orders].reverse().slice(0, 6);
 
   const change = (id: string, delta: number) =>
     setQuantities((current) => ({ ...current, [id]: Math.max(0, (current[id] ?? 0) + delta) }));
@@ -55,6 +53,7 @@ export function WaiterScreen() {
 
   return (
     <div className="mx-auto max-w-md pb-28">
+      <AttendantTabs />
       {error && (
         <p
           role="alert"
@@ -68,7 +67,10 @@ export function WaiterScreen() {
           role="status"
           className="mx-4 mt-4 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-900"
         >
-          Pedido da mesa {sentTable} enviado para a cozinha.
+          Pedido da mesa {sentTable} enviado para a cozinha.{' '}
+          <a href="#/atendente/enviados" className="underline">
+            Acompanhar
+          </a>
         </p>
       )}
 
@@ -149,27 +151,6 @@ export function WaiterScreen() {
             </ul>
           </div>
         ))}
-      </section>
-
-      <section aria-labelledby="enviados-titulo" className="px-4 pt-8">
-        <h2 id="enviados-titulo" className="text-lg font-bold text-slate-900">
-          Pedidos enviados
-        </h2>
-        {recentOrders.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-600">Nenhum pedido enviado ainda.</p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {recentOrders.map((order) => (
-              <li
-                key={order.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3"
-              >
-                <span className="font-semibold text-slate-900">Mesa {order.table}</span>
-                <StatusBadge status={order.status} />
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
       <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
