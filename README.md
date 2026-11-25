@@ -33,6 +33,47 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 | Cashier | Reviews a table's consumed items and closes the bill. |
 | Manager / Admin | Manages the menu, tables and users. |
 
+## Screens
+
+Each role only sees the screens it needs; the server enforces the same rules on
+every route, the UI only hides what the role cannot use.
+
+| Role | Screens |
+| --- | --- |
+| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). |
+| Cook | Kitchen: incoming, in-preparation and ready orders (`#/cozinha`). |
+| Manager | Everything above plus Control (`#/controle`). |
+
+The Control screen has three sections:
+
+- **Tables and menu** (`#/controle/cardapio`): number of tables and menu items,
+  saved together. Leaving the section with unsaved changes is blocked. Menu
+  categories are matched ignoring case and accents, so "Doce" and "doce" are
+  the same category.
+- **Team** (`#/controle/equipe`): create users with a role (waiter, cook or
+  manager) and activate or deactivate them.
+- **History** (`#/controle/historico`): every order, with table and customer name.
+
+The layout adapts to the screen: section tabs at the top on a phone, and a side
+menu with a wider content area on desktop.
+
+## How a table works
+
+1. **Open the table.** The waiter picks a free table and enters the customer's
+   name (required, up to 40 characters). Only one open session per table is
+   allowed, enforced by the database.
+2. **Add people.** "Add person" creates another check (comanda) on the same table.
+   Each person has their own check.
+3. **Take orders.** Every order belongs to a check. With more than one check open,
+   the waiter chooses whose it is. The customer name shows in sent orders and in
+   the history.
+4. **Close.** Closing a check leaves the others open; closing the last one also
+   closes the table. "Close table" closes every open check at once.
+
+Opening a table and adding a person work offline: they go into the same local
+queue as orders and are sent in order on reconnect. Closing a check or a table
+needs a connection.
+
 ## Order lifecycle
 
 `Placed` → `In preparation` → `Ready` → `Delivered` → `Paid`
@@ -42,12 +83,14 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 Early stage. Waiters, the kitchen and the control screen already talk to each
 other in real time through the API (REST + Socket.IO) backed by PostgreSQL.
 Access is controlled by session login with three roles (waiter, cook and
-manager). Every client still operates on a single default restaurant.
+manager), and each role only sees its own screens. Tables are opened with the
+customer's name and can hold one check (comanda) per person. Every client still
+operates on a single default restaurant.
 
 ### Progress
 
 ```text
-Overall  [███████████████░░░░░]  74%  (14 of 19 milestones)
+Overall  [███████████████░░░░░]  76%  (16 of 21 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
@@ -67,13 +110,15 @@ Update the bar and the counts whenever a milestone is checked off.
 - [x] Cookie-based session authentication
 - [x] Role-based permissions (waiter, cook, manager; cashier arrives with billing)
 
-**Order flow** (5/5)
+**Order flow** (7/7)
 
 - [x] Menu management
 - [x] Table management
 - [x] Waiter order entry
 - [x] Real-time kitchen screen
 - [x] "Ready" notification to the waiter
+- [x] Open tables with the customer's name
+- [x] Per-person checks (comandas) inside a table
 
 **Billing** (0/2)
 
@@ -106,6 +151,10 @@ The PWA keeps working without a connection: waiters can still take orders (the m
 and tables are cached), orders wait in a local queue and are resent when the
 connection returns. To try the service worker use `pnpm --filter @food-stack/web
 exec vite preview`, since it only runs in the production build.
+
+After the first run, sign in with the manager from `.env` and create the waiter
+and cook users in Control, Team. Restart the API after pulling changes that add
+migrations (run `prisma migrate deploy` again).
 
 Other commands: `pnpm test`, `pnpm typecheck`, `pnpm build`.
 
@@ -141,5 +190,11 @@ any phone or kitchen screen without an app store.
   with cookie-based sessions (`HttpOnly`).
 - **Boundary validation:** every external input (HTTP, WebSocket, environment
   variables) is validated at runtime with Zod.
+- **Backward-compatible database changes:** schema changes follow expand/contract
+  (only add nullable or defaulted columns and tables, never rename or drop in the
+  same release), so old records keep working without a backfill. Orders created
+  before open tables and checks simply have no customer.
+- **Idempotent writes:** orders, table openings and new checks carry a client
+  generated id, so a resend after a network failure never creates duplicates.
 - **Out of scope for the MVP:** fiscal documents (NFC-e) and Pix payments. The
   billing model is designed so they can be added later.
