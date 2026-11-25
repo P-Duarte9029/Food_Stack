@@ -9,7 +9,8 @@ import { useElapsedMinutes } from '../orders/useElapsedMinutes';
 const COLUMNS: readonly OrderStatus[] = ['placed', 'in_preparation', 'ready'];
 
 function OrderCard({ order }: { order: Order }) {
-  const minutes = useElapsedMinutes(order.createdAt);
+  const ready = order.status === 'ready';
+  const minutes = useElapsedMinutes(order.createdAt, !ready);
   const [error, setError] = useState<string | null>(null);
   const action = order.status === 'ready' ? null : ADVANCE_LABEL[order.status];
 
@@ -17,10 +18,12 @@ function OrderCard({ order }: { order: Order }) {
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-2xl font-bold text-slate-900">Mesa {order.table}</h3>
-        <span className="flex items-center gap-1 text-sm text-slate-700">
-          <Clock aria-hidden className="size-4" />
-          {minutes} min
-        </span>
+        {!ready && (
+          <span className="flex items-center gap-1 text-sm text-slate-700">
+            <Clock aria-hidden className="size-4" />
+            {minutes} min
+          </span>
+        )}
       </div>
       <ul className="mt-3 space-y-1 text-lg text-slate-900">
         {order.items.map((item) => (
