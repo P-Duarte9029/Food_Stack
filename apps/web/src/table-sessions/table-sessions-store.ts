@@ -26,6 +26,15 @@ export function upsertTableSession(session: TableSession): void {
 /** Mesas abertas confirmadas pelo servidor. Aberturas ainda na fila local ficam em `useOpenTables`. */
 export const useTableSessions = store.use;
 
+export async function reloadTableSessions(): Promise<void> {
+  store.set(await request('GET', '/table-sessions', sessionsSchema));
+}
+
+export async function closeCheck(sessionId: string, checkId: string): Promise<void> {
+  await request('POST', `/table-sessions/${sessionId}/checks/${checkId}/close`, z.null());
+  await reloadTableSessions();
+}
+
 export async function closeTableSession(id: string): Promise<void> {
   await request('POST', `/table-sessions/${id}/close`, z.null());
   store.set(store.get().filter((session) => session.id !== id));

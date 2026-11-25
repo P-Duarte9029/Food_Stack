@@ -17,7 +17,10 @@ const record = (status: OrderStatus) => ({
   items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 2 }],
 });
 
-const openSession = { findFirst: vi.fn().mockResolvedValue({ id: 'session-1' }) };
+const sessionWith = (checkIds: string[]) => ({
+  findFirst: vi.fn().mockResolvedValue({ id: 'session-1', checks: checkIds.map((id) => ({ id })) }),
+});
+const openSession = sessionWith(['check-1']);
 
 function setup(prisma: Record<string, unknown>) {
   const publish = vi.fn();
@@ -38,6 +41,22 @@ describe('toOrder', () => {
       customerName: null,
       items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 2 }],
     });
+  });
+});
+
+describe('toOrder (nome do cliente)', () => {
+  it('prefere o nome da comanda ao de quem abriu a mesa', () => {
+    const order = toOrder({
+      ...record('placed'),
+      tableSession: { customerName: 'Ana' },
+      check: { name: 'Beto' },
+    });
+    expect(order.customerName).toBe('Beto');
+  });
+
+  it('cai no nome de quem abriu a mesa quando não há comanda', () => {
+    const order = toOrder({ ...record('placed'), tableSession: { customerName: 'Ana' } });
+    expect(order.customerName).toBe('Ana');
   });
 });
 
@@ -74,7 +93,7 @@ describe('OrdersService.create', () => {
   });
 
   it('só aceita sessão aberta da mesma mesa e do mesmo restaurante', async () => {
-    const findFirst = vi.fn().mockResolvedValue({ id: 'session-1' });
+    const findFirst = sessionWith(['check-1']).findFirst;
     const { service } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
       tableSession: { findFirst },
@@ -108,7 +127,58 @@ describe('OrdersService.create', () => {
       { menuItemId: 'm1', name: 'Pudim', quantity: 2 },
     ]);
     expect(create.mock.calls[0]?.[0].data.tableSessionId).toBe('session-1');
+    expect(create.mock.calls[0]?.[0].data.checkId).toBe('check-1');
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderCreated, order);
+  });
+});
+
+describe('OrdersService.create (comandas)', () => {
+  const base = { table: 3, items: [{ menuItemId: 'm1', name: 'x', quantity: 1 }] };
+  const checkId = '6f1d2c3e-1111-4222-8333-444455556666';
+
+  const withSession = (checkIds: string[]) => {
+    const create = vi.fn().mockResolvedValue(record('placed'));
+    const { service } = setup({
+      restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: sessionWith(checkIds),
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      order: { create },
+    });
+    return { service, create };
+  };
+
+  it('grava o pedido na comanda informada', async () => {
+    const { service, create } = withSession(['outra', checkId]);
+    await service.create(DEFAULT_RESTAURANT_ID, { ...base, checkId });
+    expect(create.mock.calls[0]?.[0].data.checkId).toBe(checkId);
+  });
+
+  it('recusa comanda que não está aberta na mesa', async () => {
+    const { service, create } = withSession(['outra']);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, { ...base, checkId })).rejects.toThrow(
+      'A comanda não está aberta',
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('exige a comanda quando há mais de uma aberta', async () => {
+    const { service, create } = withSession(['a', 'b']);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, base)).rejects.toThrow(
+      'Informe a comanda do pedido',
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('usa a única comanda aberta quando o pedido não informa', async () => {
+    const { service, create } = withSession(['unica']);
+    await service.create(DEFAULT_RESTAURANT_ID, base);
+    expect(create.mock.calls[0]?.[0].data.checkId).toBe('unica');
+  });
+
+  it('mesa aberta antes das comandas recebe o pedido sem comanda', async () => {
+    const { service, create } = withSession([]);
+    await service.create(DEFAULT_RESTAURANT_ID, base);
+    expect(create.mock.calls[0]?.[0].data.checkId).toBeNull();
   });
 });
 

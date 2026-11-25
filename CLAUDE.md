@@ -402,6 +402,15 @@ Estrutura e convenções do scaffold:
   A fila offline guarda dois tipos de entrada (`order` e `open_table`), enviados
   em ordem; entradas antigas sem `kind` são lidas como pedidos. Fechar mesa exige
   conexão e é bloqueado com pedidos da mesa na fila.
+- Comandas: cada pessoa da mesa tem uma comanda (`guest_checks`, nome obrigatório
+  até 40 caracteres). Abrir a mesa cria a primeira com o nome informado;
+  `POST /table-sessions/:id/checks` adiciona outras (idempotente pelo `id` do
+  cliente). `orders.checkId` é opcional: sem ele vale a única comanda aberta e, com
+  mais de uma, o servidor exige `checkId`. Mesas abertas antes das comandas têm
+  `checks` vazio e seus pedidos ficam sem comanda (nome vem da mesa), sem backfill.
+  Fechar a comanda não encerra as outras; fechar a última fecha a mesa, e fechar a
+  mesa fecha todas. A fila offline também guarda `add_check`; fechar comanda ou mesa
+  exige conexão.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e

@@ -15,6 +15,7 @@ const focusRing =
 
 export function WaiterScreen() {
   const [table, setTable] = useState<number | null>(null);
+  const [checkId, setCheckId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [sentTable, setSentTable] = useState<number | null>(null);
   const [sentResult, setSentResult] = useState<SubmitResult>('sent');
@@ -28,6 +29,7 @@ export function WaiterScreen() {
   const categories = distinctCategories(menu.map((item) => item.category));
   const openTables = useOpenTables();
   const session = openTables.find((open) => open.table === table);
+  const activeCheck = session?.checks.find((check) => check.id === checkId) ?? session?.checks[0];
 
   const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
   const totalUnits = selected.reduce((sum, item) => sum + (quantities[item.id] ?? 0), 0);
@@ -44,6 +46,7 @@ export function WaiterScreen() {
       const result = await submitOrder({
         table,
         tableSessionId: session.id,
+        checkId: activeCheck?.id,
         items: selected.map((item) => ({
           menuItemId: item.id,
           name: item.name,
@@ -95,13 +98,16 @@ export function WaiterScreen() {
         <div className="mt-3 grid grid-cols-4 gap-2">
           {tables.map((number) => {
             const occupant = openTables.find((open) => open.table === number);
+            const extraPeople = occupant ? Math.max(0, occupant.checks.length - 1) : 0;
             return (
               <button
                 key={number}
                 type="button"
                 aria-pressed={table === number}
                 aria-label={
-                  occupant ? `Mesa ${number}, ocupada por ${occupant.customerName}` : `Mesa ${number}, livre`
+                  occupant
+                    ? `Mesa ${number}, ocupada por ${occupant.checks[0]?.name ?? occupant.customerName}${extraPeople > 0 ? ` e mais ${extraPeople}` : ''}`
+                    : `Mesa ${number}, livre`
                 }
                 onClick={() => {
                   setTable(number);
@@ -118,14 +124,22 @@ export function WaiterScreen() {
                 <span className="text-lg leading-tight">{number}</span>
                 {occupant && (
                   <span className="max-w-full truncate text-xs font-medium leading-tight">
-                    {occupant.customerName}
+                    {occupant.checks[0]?.name ?? occupant.customerName}
+                    {extraPeople > 0 && ` +${extraPeople}`}
                   </span>
                 )}
               </button>
             );
           })}
         </div>
-        {table !== null && <TableSessionPanel table={table} session={session} />}
+        {table !== null && (
+          <TableSessionPanel
+            table={table}
+            session={session}
+            activeCheck={activeCheck}
+            onCheckChange={setCheckId}
+          />
+        )}
       </section>
 
       <section aria-labelledby="itens-titulo" className="px-4 pt-8">
@@ -187,7 +201,7 @@ export function WaiterScreen() {
             {table === null
               ? 'Escolha uma mesa'
               : session
-                ? `Mesa ${table} · ${session.customerName}`
+                ? `Mesa ${table} · ${activeCheck?.name ?? session.customerName}`
                 : `Mesa ${table} · abra a mesa para enviar`}
             <br />
             {totalUnits} {totalUnits === 1 ? 'item' : 'itens'}

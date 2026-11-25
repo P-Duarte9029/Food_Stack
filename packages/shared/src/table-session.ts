@@ -13,12 +13,32 @@ export const openTableSessionInputSchema = z.object({
   id: z.string().uuid().optional(),
   table: z.number().int().positive(),
   customerName: customerNameSchema,
+  // Id da primeira comanda, gerado no cliente para a fila offline referenciá-la.
+  checkId: z.string().uuid().optional(),
 });
 export type OpenTableSessionInput = z.infer<typeof openTableSessionInputSchema>;
 
-/** Mesa aberta: ocupação de uma mesa por um cliente, até ser fechada. */
-export const tableSessionSchema = openTableSessionInputSchema.extend({
+export const addGuestCheckInputSchema = z.object({
+  // Gerado no cliente: torna o reenvio da fila offline idempotente.
+  id: z.string().uuid().optional(),
+  name: customerNameSchema,
+});
+export type AddGuestCheckInput = z.infer<typeof addGuestCheckInputSchema>;
+
+/** Comanda: a conta de uma pessoa dentro da mesa aberta. */
+export const guestCheckSchema = z.object({
+  id: z.string().min(1),
+  name: customerNameSchema,
+});
+export type GuestCheck = z.infer<typeof guestCheckSchema>;
+
+/**
+ * Mesa aberta: ocupação de uma mesa até ser fechada. `customerName` é quem abriu a
+ * mesa; `checks` são as comandas abertas (vazio em mesas abertas antes das comandas).
+ */
+export const tableSessionSchema = openTableSessionInputSchema.omit({ checkId: true }).extend({
   id: z.string().min(1),
   openedAt: z.string().datetime(),
+  checks: z.array(guestCheckSchema).default([]),
 });
 export type TableSession = z.infer<typeof tableSessionSchema>;

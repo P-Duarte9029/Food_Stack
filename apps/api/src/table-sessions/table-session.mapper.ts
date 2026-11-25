@@ -5,6 +5,7 @@ export interface TableSessionRecord {
   table: number;
   customerName: string;
   openedAt: Date;
+  checks: ReadonlyArray<{ id: string; name: string }>;
 }
 
 export const tableSessionSelect = {
@@ -12,6 +13,11 @@ export const tableSessionSelect = {
   table: true,
   customerName: true,
   openedAt: true,
+  checks: {
+    where: { closedAt: null },
+    orderBy: { openedAt: 'asc' },
+    select: { id: true, name: true },
+  },
 } as const;
 
 export const toTableSession = (record: TableSessionRecord): TableSession => ({
@@ -19,4 +25,5 @@ export const toTableSession = (record: TableSessionRecord): TableSession => ({
   table: record.table,
   customerName: record.customerName,
   openedAt: record.openedAt.toISOString(),
+  checks: record.checks.map(({ id, name }) => ({ id, name })),
 });

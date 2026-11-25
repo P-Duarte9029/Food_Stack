@@ -20,6 +20,7 @@ const isUniqueViolation = (error: unknown): boolean =>
 const orderInclude = {
   items: { select: { menuItemId: true, name: true, quantity: true }, orderBy: { name: 'asc' } },
   tableSession: { select: { customerName: true } },
+  check: { select: { name: true } },
 } as const;
 
 @Injectable()
@@ -52,7 +53,7 @@ export class OrdersService {
       throw new BadRequestException('Mesa inexistente');
     }
 
-    const tableSession = await this.findOpenSession(restaurantId, input);
+    const target = await this.resolveTarget(restaurantId, input);
 
     const requested = new Map<string, number>();
     for (const item of input.items) {
@@ -74,7 +75,8 @@ export class OrdersService {
             id: input.id,
             restaurantId,
             table: input.table,
-            tableSessionId: tableSession.id,
+            tableSessionId: target.tableSessionId,
+            checkId: target.checkId,
             items: {
               create: menuItems.map((menuItem) => ({
                 menuItemId: menuItem.id,
@@ -97,10 +99,11 @@ export class OrdersService {
     return order;
   }
 
-  private async findOpenSession(
+  /** Mesa aberta e comanda do pedido; mesas abertas antes das comandas ficam sem comanda. */
+  private async resolveTarget(
     restaurantId: string,
     input: CreateOrderInput,
-  ): Promise<{ id: string }> {
+  ): Promise<{ tableSessionId: string; checkId: string | null }> {
     const session = await this.prisma.tableSession.findFirst({
       where: {
         restaurantId,
@@ -108,10 +111,18 @@ export class OrdersService {
         table: input.table,
         ...(input.tableSessionId ? { id: input.tableSessionId } : {}),
       },
-      select: { id: true },
+      select: { id: true, checks: { where: { closedAt: null }, select: { id: true } } },
     });
     if (!session) throw new BadRequestException('Abra a mesa antes de enviar o pedido');
-    return session;
+
+    if (input.checkId) {
+      if (!session.checks.some((check) => check.id === input.checkId)) {
+        throw new BadRequestException('A comanda não está aberta');
+      }
+      return { tableSessionId: session.id, checkId: input.checkId };
+    }
+    if (session.checks.length > 1) throw new BadRequestException('Informe a comanda do pedido');
+    return { tableSessionId: session.id, checkId: session.checks[0]?.id ?? null };
   }
 
   private async findForRetry(restaurantId: string, id: string): Promise<Order | null> {

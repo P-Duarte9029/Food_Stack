@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react';
 import { z } from 'zod';
 import {
+  addGuestCheckInputSchema,
   createOrderInputSchema,
+  guestCheckSchema,
   openTableSessionInputSchema,
   orderSchema,
   tableSessionSchema,
@@ -12,7 +14,7 @@ import { ApiError, request } from '../api/client';
 import { getAuthState, subscribeAuth } from '../auth/auth-store';
 import { upsertOrder } from '../orders/orders-store';
 import { socket } from '../realtime/socket';
-import { upsertTableSession } from '../table-sessions/table-sessions-store';
+import { reloadTableSessions, upsertTableSession } from '../table-sessions/table-sessions-store';
 import { generateUuid } from '../lib/uuid';
 
 const STORAGE_PREFIX = 'food-stack:outbox:';
@@ -35,6 +37,12 @@ const queuedOpenTableSchema = z.object({
   ...queueMeta,
 });
 
+const queuedAddCheckSchema = z.object({
+  kind: z.literal('add_check'),
+  input: addGuestCheckInputSchema.required({ id: true }).extend({ tableSessionId: z.string().uuid() }),
+  ...queueMeta,
+});
+
 // Entradas gravadas antes de existir `kind` eram sempre pedidos.
 const withKind = (value: unknown): unknown =>
   typeof value === 'object' && value !== null && !('kind' in value)
@@ -43,12 +51,13 @@ const withKind = (value: unknown): unknown =>
 
 const queuedEntrySchema = z.preprocess(
   withKind,
-  z.discriminatedUnion('kind', [queuedOrderSchema, queuedOpenTableSchema]),
+  z.discriminatedUnion('kind', [queuedOrderSchema, queuedOpenTableSchema, queuedAddCheckSchema]),
 );
 
 export type QueuedOrder = z.infer<typeof queuedOrderSchema>;
 export type QueuedOpenTable = z.infer<typeof queuedOpenTableSchema>;
-export type QueuedEntry = QueuedOrder | QueuedOpenTable;
+export type QueuedAddCheck = z.infer<typeof queuedAddCheckSchema>;
+export type QueuedEntry = QueuedOrder | QueuedOpenTable | QueuedAddCheck;
 
 const queueSchema = z.array(queuedEntrySchema);
 
@@ -110,9 +119,17 @@ async function deliver(entry: QueuedEntry): Promise<void> {
     upsertOrder(order);
     return;
   }
-  const session = await request('POST', '/table-sessions', tableSessionSchema, entry.input);
-  // A mesa passa do rascunho local para a lista do servidor sem ficar um instante livre.
-  upsertTableSession(session);
+  if (entry.kind === 'open_table') {
+    const session = await request('POST', '/table-sessions', tableSessionSchema, entry.input);
+    // A mesa passa do rascunho local para a lista do servidor sem ficar um instante livre.
+    upsertTableSession(session);
+    commit(without(entry.input.id));
+    return;
+  }
+  const { tableSessionId, ...check } = entry.input;
+  await request('POST', `/table-sessions/${tableSessionId}/checks`, guestCheckSchema, check);
+  // Recarrega antes de sair da fila para a comanda não sumir da tela por um instante.
+  await reloadTableSessions().catch(() => undefined);
   commit(without(entry.input.id));
 }
 
@@ -195,6 +212,12 @@ export const submitOpenTable = (input: Omit<OpenTableSessionInput, 'id'>): Promi
       status: 'pending',
     },
     'Não foi possível abrir a mesa.',
+  );
+
+export const submitAddCheck = (input: QueuedAddCheck['input']): Promise<SubmitResult> =>
+  enqueue(
+    { kind: 'add_check', input, queuedAt: new Date().toISOString(), status: 'pending' },
+    'Não foi possível adicionar a comanda.',
   );
 
 export function discardQueued(id: string): void {

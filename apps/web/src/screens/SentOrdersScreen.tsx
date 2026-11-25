@@ -4,7 +4,7 @@ import { AttendantTabs } from '../components/AttendantTabs';
 import { discardQueued, retryQueued, useOutbox, type QueuedEntry } from '../offline/outbox';
 import { useOrders } from '../orders/orders-store';
 import { STATUS_LABEL } from '../orders/status';
-import { useOpenTables } from '../table-sessions/use-open-tables';
+import { useOpenTables, type OpenTable } from '../table-sessions/use-open-tables';
 
 const STEPS: readonly OrderStatus[] = ['placed', 'in_preparation', 'ready'];
 
@@ -77,18 +77,35 @@ function SentOrderCard({ order }: { order: Order }) {
   );
 }
 
+function describeQueued(
+  entry: QueuedEntry,
+  openTables: readonly OpenTable[],
+): { table: number | undefined; customerName: string | undefined; summary: string } {
+  switch (entry.kind) {
+    case 'open_table':
+      return { table: entry.input.table, customerName: entry.input.customerName, summary: 'Abertura de mesa' };
+    case 'add_check':
+      return {
+        table: openTables.find((open) => open.id === entry.input.tableSessionId)?.table,
+        customerName: entry.input.name,
+        summary: 'Nova comanda',
+      };
+    case 'order': {
+      const session = openTables.find((open) => open.id === entry.input.tableSessionId);
+      const check = session?.checks.find((candidate) => candidate.id === entry.input.checkId);
+      return {
+        table: entry.input.table,
+        customerName: check?.name ?? session?.customerName,
+        summary: entry.input.items.map((item) => `${item.quantity}x ${item.name}`).join(', '),
+      };
+    }
+  }
+}
+
 function QueuedCard({ entry }: { entry: QueuedEntry }) {
   const openTables = useOpenTables();
   const failed = entry.status === 'failed';
-  const { table } = entry.input;
-  const customerName =
-    entry.kind === 'open_table'
-      ? entry.input.customerName
-      : openTables.find((open) => open.id === entry.input.tableSessionId)?.customerName;
-  const summary =
-    entry.kind === 'open_table'
-      ? 'Abertura de mesa'
-      : entry.input.items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
+  const { table, customerName, summary } = describeQueued(entry, openTables);
 
   return (
     <li
@@ -98,7 +115,7 @@ function QueuedCard({ entry }: { entry: QueuedEntry }) {
     >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="min-w-0 break-words text-lg font-bold text-slate-900">
-          Mesa {table}
+          {table === undefined ? 'Mesa' : `Mesa ${table}`}
           {customerName && <span className="font-semibold text-slate-700"> · {customerName}</span>}
         </h3>
         <span className="shrink-0 text-sm text-slate-700">
