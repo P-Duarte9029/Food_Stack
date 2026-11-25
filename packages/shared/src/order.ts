@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const orderStatusSchema = z.enum(['placed', 'in_preparation', 'ready']);
+export const orderStatusSchema = z.enum(['placed', 'in_preparation', 'ready', 'delivered']);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
 export const orderItemSchema = z.object({
@@ -34,10 +34,12 @@ export const orderSchema = createOrderInputSchema.extend({
 });
 export type Order = z.infer<typeof orderSchema>;
 
+// Avanço feito pela cozinha: termina em "pronto". A entrega é uma ação própria do atendente.
 const nextStatusByStatus: Record<OrderStatus, OrderStatus | null> = {
   placed: 'in_preparation',
   in_preparation: 'ready',
   ready: null,
+  delivered: null,
 };
 
 export const nextOrderStatus = (status: OrderStatus): OrderStatus | null =>

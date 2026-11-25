@@ -12,7 +12,8 @@ function OrderCard({ order }: { order: Order }) {
   const ready = order.status === 'ready';
   const minutes = useElapsedMinutes(order.createdAt, !ready);
   const [error, setError] = useState<string | null>(null);
-  const action = order.status === 'ready' ? null : ADVANCE_LABEL[order.status];
+  const action =
+    order.status === 'placed' || order.status === 'in_preparation' ? ADVANCE_LABEL[order.status] : null;
 
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

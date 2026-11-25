@@ -29,3 +29,10 @@ describe('createOrderInputSchema', () => {
     expect(createOrderInputSchema.safeParse({ table: 3, items: [item] }).success).toBe(true);
   });
 });
+
+describe('status entregue', () => {
+  it('a cozinha não avança além de pronto, e entregue é final', () => {
+    expect(nextOrderStatus('ready')).toBeNull();
+    expect(nextOrderStatus('delivered')).toBeNull();
+  });
+});

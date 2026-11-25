@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { REALTIME_EVENTS, type OrderStatus } from '@food-stack/shared';
 import type { PrismaService } from '../prisma.service';
@@ -284,5 +289,105 @@ describe('OrdersService.advance', () => {
 
     expect(order.status).toBe('in_preparation');
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderUpdated, order);
+  });
+});
+
+describe('OrdersService.deliver', () => {
+  const waiter = { id: 'user-1', role: 'waiter' } as const;
+  const manager = { id: 'user-9', role: 'manager' } as const;
+  const owned = (status: OrderStatus, createdById: string | null = 'user-1') => ({
+    status,
+    createdById,
+  });
+
+  const withOrder = (current: ReturnType<typeof owned> | null, updated = { count: 1 }) => {
+    const updateMany = vi.fn().mockResolvedValue(updated);
+    const { service, publish } = setup({
+      order: {
+        findFirst: vi.fn().mockResolvedValue(current),
+        updateMany,
+        findUniqueOrThrow: vi.fn().mockResolvedValue(record('delivered')),
+      },
+    });
+    return { service, publish, updateMany };
+  };
+
+  it('lança NotFound para pedido inexistente', async () => {
+    const { service } = withOrder(null);
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'x')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('o atendente que criou marca como entregue e publica order:updated', async () => {
+    const { service, publish, updateMany } = withOrder(owned('ready'));
+
+    const order = await service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'order-1');
+
+    expect(order.status).toBe('delivered');
+    expect(updateMany.mock.calls[0]?.[0]).toEqual({
+      where: { id: 'order-1', restaurantId: DEFAULT_RESTAURANT_ID, status: 'ready' },
+      data: { status: 'delivered' },
+    });
+    expect(publish).toHaveBeenCalledWith(
+      DEFAULT_RESTAURANT_ID,
+      REALTIME_EVENTS.orderUpdated,
+      order,
+    );
+  });
+
+  it('o gerente pode entregar pedido de outro atendente', async () => {
+    const { service } = withOrder(owned('ready', 'user-1'));
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, manager, 'order-1')).resolves.toBeDefined();
+  });
+
+  it('recusa atendente que não criou o pedido', async () => {
+    const { service, updateMany } = withOrder(owned('ready', 'outro'));
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'order-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('pedido antigo, sem autor, só o gerente entrega', async () => {
+    const { service } = withOrder(owned('ready', null));
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'order-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, manager, 'order-1')).resolves.toBeDefined();
+  });
+
+  it('recusa pedido que ainda não está pronto', async () => {
+    const { service, updateMany } = withOrder(owned('in_preparation'));
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'order-1')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('entregar de novo devolve o pedido sem atualizar nem publicar', async () => {
+    const { service, publish, updateMany } = withOrder(owned('delivered'));
+    const order = await service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'order-1');
+    expect(order.status).toBe('delivered');
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('lança Conflict quando outro cliente mudou o status antes', async () => {
+    const { service } = withOrder(owned('ready'), { count: 0 });
+    await expect(service.deliver(DEFAULT_RESTAURANT_ID, waiter, 'order-1')).rejects.toThrow(
+      ConflictException,
+    );
+  });
+});
+
+describe('OrdersService.advance (entregue)', () => {
+  it('a cozinha não avança um pedido já entregue', async () => {
+    const { service } = setup({
+      order: { findFirst: vi.fn().mockResolvedValue({ status: 'delivered' }) },
+    });
+    await expect(service.advance(DEFAULT_RESTAURANT_ID, 'x')).rejects.toThrow(
+      'O pedido já foi entregue',
+    );
   });
 });

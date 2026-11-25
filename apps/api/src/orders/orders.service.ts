@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,6 +10,7 @@ import {
   nextOrderStatus,
   type CreateOrderInput,
   type Order,
+  type Role,
 } from '@food-stack/shared';
 import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -142,7 +144,11 @@ export class OrdersService {
     if (!current) throw new NotFoundException('Pedido não encontrado');
 
     const next = nextOrderStatus(current.status);
-    if (!next) throw new ConflictException('O pedido já está pronto');
+    if (!next) {
+      throw new ConflictException(
+        current.status === 'delivered' ? 'O pedido já foi entregue' : 'O pedido já está pronto',
+      );
+    }
 
     const { count } = await this.prisma.order.updateMany({
       where: { id, restaurantId, status: current.status },
@@ -157,5 +163,40 @@ export class OrdersService {
     const order = toOrder(record);
     this.realtime.publish(restaurantId, REALTIME_EVENTS.orderUpdated, order);
     return order;
+  }
+
+  /** Marca como entregue um pedido pronto. Só quem criou o pedido (ou o gerente) pode. */
+  async deliver(
+    restaurantId: string,
+    user: { id: string; role: Role },
+    id: string,
+  ): Promise<Order> {
+    const current = await this.prisma.order.findFirst({
+      where: { id, restaurantId },
+      select: { status: true, createdById: true },
+    });
+    if (!current) throw new NotFoundException('Pedido não encontrado');
+    if (user.role !== 'manager' && current.createdById !== user.id) {
+      throw new ForbiddenException('Só quem criou o pedido pode marcá-lo como entregue');
+    }
+
+    if (current.status === 'delivered') return this.findOrder(id); // reenvio: já entregue
+    if (current.status !== 'ready') throw new ConflictException('O pedido ainda não está pronto');
+
+    const { count } = await this.prisma.order.updateMany({
+      where: { id, restaurantId, status: 'ready' },
+      data: { status: 'delivered' },
+    });
+    if (count === 0) throw new ConflictException('O status do pedido mudou, atualize a tela');
+
+    const order = await this.findOrder(id);
+    this.realtime.publish(restaurantId, REALTIME_EVENTS.orderUpdated, order);
+    return order;
+  }
+
+  private async findOrder(id: string): Promise<Order> {
+    return toOrder(
+      await this.prisma.order.findUniqueOrThrow({ where: { id }, include: orderInclude }),
+    );
   }
 }

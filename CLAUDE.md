@@ -420,6 +420,12 @@ Estrutura e convenções do scaffold:
   `NoticeToasts` mostra os avisos (10 s, dispensáveis, `aria-live`) nas telas do
   atendente. O evento em tempo real continua indo a todo o restaurante; o filtro por
   autor é no cliente.
+- Entrega: o status `delivered` vem depois de `ready`. A cozinha avança só até
+  "pronto" (`PATCH /orders/:id/advance`, `nextOrderStatus` termina em `ready`); a
+  entrega é `PATCH /orders/:id/deliver`, de garçom e gerente, e o servidor só aceita
+  de quem criou o pedido ou do gerente (pedidos antigos, sem autor, só do gerente).
+  É idempotente. Pedido entregue some de "Pedidos enviados" e da coluna de prontos
+  da cozinha e continua no histórico. Marcar como entregue exige conexão.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e

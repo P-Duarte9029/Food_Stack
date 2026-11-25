@@ -1,13 +1,15 @@
-import { Check, CloudOff, RotateCw, TriangleAlert, X } from 'lucide-react';
+import { useState } from 'react';
+import { Check, CloudOff, PackageCheck, RotateCw, TriangleAlert, X } from 'lucide-react';
 import type { Order, OrderStatus } from '@food-stack/shared';
 import { AttendantTabs } from '../components/AttendantTabs';
 import { SectionLayout } from '../components/SectionLayout';
 import { discardQueued, retryQueued, useOutbox, type QueuedEntry } from '../offline/outbox';
-import { useOrders } from '../orders/orders-store';
+import { useAuth } from '../auth/auth-store';
+import { deliverOrder, useOrders } from '../orders/orders-store';
 import { STATUS_LABEL } from '../orders/status';
 import { useOpenTables, type OpenTable } from '../table-sessions/use-open-tables';
 
-const STEPS: readonly OrderStatus[] = ['placed', 'in_preparation', 'ready'];
+const STEPS: readonly OrderStatus[] = ['placed', 'in_preparation', 'ready', 'delivered'];
 
 function ProgressSteps({ status }: { status: OrderStatus }) {
   const currentIndex = STEPS.indexOf(status);
@@ -15,7 +17,7 @@ function ProgressSteps({ status }: { status: OrderStatus }) {
   return (
     <ol className="mt-3 flex items-start" aria-label="Andamento do pedido">
       {STEPS.map((step, index) => {
-        const done = index < currentIndex || status === 'ready';
+        const done = index < currentIndex || status === 'delivered';
         const current = index === currentIndex;
         return (
           <li
@@ -57,6 +59,25 @@ function ProgressSteps({ status }: { status: OrderStatus }) {
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 function SentOrderCard({ order }: { order: Order }) {
+  const { user } = useAuth();
+  const [delivering, setDelivering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canDeliver =
+    order.status === 'ready' &&
+    user !== null &&
+    (user.role === 'manager' || order.createdById === user.id);
+
+  const deliver = async () => {
+    setDelivering(true);
+    setError(null);
+    try {
+      await deliverOrder(order.id);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Não foi possível marcar como entregue.');
+      setDelivering(false);
+    }
+  };
+
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex items-baseline justify-between gap-2">
@@ -74,6 +95,22 @@ function SentOrderCard({ order }: { order: Order }) {
         {order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}
       </p>
       <ProgressSteps status={order.status} />
+      {canDeliver && (
+        <button
+          type="button"
+          disabled={delivering}
+          onClick={() => void deliver()}
+          className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 font-semibold text-white active:bg-brand-700 disabled:bg-slate-300 disabled:text-slate-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+        >
+          <PackageCheck aria-hidden className="size-5" />
+          {delivering ? 'Marcando...' : 'Marcar como entregue'}
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="mt-3 text-sm font-medium text-red-800">
+          {error}
+        </p>
+      )}
     </li>
   );
 }
@@ -163,7 +200,9 @@ function QueuedCard({ entry }: { entry: QueuedEntry }) {
 }
 
 export function SentOrdersScreen() {
-  const orders = [...useOrders()].reverse();
+  const orders = useOrders()
+    .filter((order) => order.status !== 'delivered')
+    .reverse();
   const queued = [...useOutbox()].reverse();
 
   return (

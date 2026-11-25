@@ -23,6 +23,15 @@ export class OrdersController {
     return this.orders.create(user.restaurantId, user.id, body);
   }
 
+  @Patch(':id/deliver')
+  @Roles('waiter', 'manager')
+  deliver(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<Order> {
+    return this.orders.deliver(user.restaurantId, user, id);
+  }
+
   @Patch(':id/advance')
   @Roles('cook', 'manager')
   advance(
