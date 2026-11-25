@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
+import { distinctCategories, sameCategory } from '@food-stack/shared';
 import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
 import { AttendantTabs } from '../components/AttendantTabs';
 import { submitOrder, type SubmitResult } from '../offline/outbox';
 import { useIsConnected } from '../realtime/socket';
+import { useOpenTables } from '../table-sessions/use-open-tables';
+import { TableSessionPanel } from './waiter/TableSessionPanel';
 
 type Quantities = Readonly<Record<string, number>>;
 
@@ -22,22 +25,25 @@ export function WaiterScreen() {
   const menuLoaded = useMenuLoaded();
   const tablesCount = useTablesCount();
   const tables = Array.from({ length: tablesCount ?? 0 }, (_, index) => index + 1);
-  const categories = [...new Set(menu.map((item) => item.category))];
+  const categories = distinctCategories(menu.map((item) => item.category));
+  const openTables = useOpenTables();
+  const session = openTables.find((open) => open.table === table);
 
   const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
   const totalUnits = selected.reduce((sum, item) => sum + (quantities[item.id] ?? 0), 0);
-  const canSend = table !== null && totalUnits > 0;
+  const canSend = session !== undefined && totalUnits > 0;
 
   const change = (id: string, delta: number) =>
     setQuantities((current) => ({ ...current, [id]: Math.max(0, (current[id] ?? 0) + delta) }));
 
   const send = async () => {
-    if (table === null || totalUnits === 0 || sending) return;
+    if (table === null || !session || totalUnits === 0 || sending) return;
     setSending(true);
     setError(null);
     try {
       const result = await submitOrder({
         table,
+        tableSessionId: session.id,
         items: selected.map((item) => ({
           menuItemId: item.id,
           name: item.name,
@@ -87,25 +93,39 @@ export function WaiterScreen() {
           1. Mesa
         </h2>
         <div className="mt-3 grid grid-cols-4 gap-2">
-          {tables.map((number) => (
-            <button
-              key={number}
-              type="button"
-              aria-pressed={table === number}
-              onClick={() => {
-                setTable(number);
-                setSentTable(null);
-              }}
-              className={`min-h-12 rounded-lg border text-lg font-semibold ${focusRing} ${
-                table === number
-                  ? 'border-brand-700 bg-brand-600 text-white'
-                  : 'border-slate-300 bg-white text-slate-900 active:bg-slate-100'
-              }`}
-            >
-              {number}
-            </button>
-          ))}
+          {tables.map((number) => {
+            const occupant = openTables.find((open) => open.table === number);
+            return (
+              <button
+                key={number}
+                type="button"
+                aria-pressed={table === number}
+                aria-label={
+                  occupant ? `Mesa ${number}, ocupada por ${occupant.customerName}` : `Mesa ${number}, livre`
+                }
+                onClick={() => {
+                  setTable(number);
+                  setSentTable(null);
+                }}
+                className={`flex min-h-14 min-w-0 flex-col items-center justify-center rounded-lg border px-1 font-semibold ${focusRing} ${
+                  table === number
+                    ? 'border-brand-700 bg-brand-600 text-white'
+                    : occupant
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 active:bg-brand-100'
+                      : 'border-slate-300 bg-white text-slate-900 active:bg-slate-100'
+                }`}
+              >
+                <span className="text-lg leading-tight">{number}</span>
+                {occupant && (
+                  <span className="max-w-full truncate text-xs font-medium leading-tight">
+                    {occupant.customerName}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+        {table !== null && <TableSessionPanel table={table} session={session} />}
       </section>
 
       <section aria-labelledby="itens-titulo" className="px-4 pt-8">
@@ -123,7 +143,7 @@ export function WaiterScreen() {
               {category}
             </h3>
             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-              {menu.filter((item) => item.category === category).map((item) => {
+              {menu.filter((item) => sameCategory(item.category, category)).map((item) => {
                 const quantity = quantities[item.id] ?? 0;
                 return (
                   <li key={item.id} className="flex items-center justify-between gap-3 p-3">
@@ -164,7 +184,11 @@ export function WaiterScreen() {
       <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
         <div className="mx-auto flex max-w-md items-center gap-3">
           <p className="flex-1 text-sm text-slate-700">
-            {table === null ? 'Escolha uma mesa' : `Mesa ${table}`}
+            {table === null
+              ? 'Escolha uma mesa'
+              : session
+                ? `Mesa ${table} · ${session.customerName}`
+                : `Mesa ${table} · abra a mesa para enviar`}
             <br />
             {totalUnits} {totalUnits === 1 ? 'item' : 'itens'}
             {!connected && <span className="block text-amber-800">Offline: será enviado ao reconectar</span>}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMenuItemInputSchema, tablesCountSchema } from './menu';
+import { canonicalCategory, createMenuItemInputSchema, distinctCategories, sameCategory, tablesCountSchema } from './menu';
 
 describe('createMenuItemInputSchema', () => {
   it('remove espaços nas pontas', () => {
@@ -22,5 +22,27 @@ describe('tablesCountSchema', () => {
     expect(tablesCountSchema.safeParse(0).success).toBe(false);
     expect(tablesCountSchema.safeParse(100).success).toBe(false);
     expect(tablesCountSchema.safeParse(2.5).success).toBe(false);
+  });
+});
+
+describe('categorias', () => {
+  it('compara ignorando caixa e espaços nas pontas', () => {
+    expect(sameCategory('Doce', ' doce ')).toBe(true);
+    expect(sameCategory('Doce', 'Salgado')).toBe(false);
+  });
+
+  it('ignora acentos', () => {
+    expect(sameCategory('Porções', 'porcoes')).toBe(true);
+    expect(sameCategory('Sobremesa', 'SOBREMESÁ')).toBe(true);
+    expect(canonicalCategory(['Porções'], 'Porcoes')).toBe('Porções');
+  });
+
+  it('reaproveita a grafia de uma categoria existente', () => {
+    expect(canonicalCategory(['Pratos', 'Doce'], 'doce')).toBe('Doce');
+    expect(canonicalCategory(['Pratos'], 'Bebidas')).toBe('Bebidas');
+  });
+
+  it('agrupa duplicatas antigas mantendo a primeira grafia', () => {
+    expect(distinctCategories(['Doce', 'Pratos', 'doce', 'DOCE'])).toEqual(['Doce', 'Pratos']);
   });
 });

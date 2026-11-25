@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   REALTIME_EVENTS,
+  canonicalCategory,
   type CreateMenuItemInput,
   type MenuItem,
 } from '@food-stack/shared';
@@ -23,8 +24,18 @@ export class MenuService {
   }
 
   async create(restaurantId: string, input: CreateMenuItemInput): Promise<MenuItem> {
+    const existing = await this.prisma.menuItem.findMany({
+      where: { restaurantId },
+      distinct: ['category'],
+      orderBy: { createdAt: 'asc' },
+      select: { category: true },
+    });
+    const category = canonicalCategory(
+      existing.map((row) => row.category),
+      input.category,
+    );
     const item = await this.prisma.menuItem.create({
-      data: { ...input, restaurantId },
+      data: { ...input, category, restaurantId },
       select: { id: true, name: true, category: true },
     });
     await this.publishChange(restaurantId);

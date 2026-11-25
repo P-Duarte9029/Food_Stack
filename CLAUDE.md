@@ -392,6 +392,16 @@ Estrutura e convenções do scaffold:
   408 e 429 mantêm o pedido pendente (reenvio ao reconectar e a cada 15 s);
   outras rejeições 4xx viram "falho", com o motivo, para o atendente decidir.
   Logout fica bloqueado com pedidos pendentes.
+- Mesa aberta: o atendente abre a mesa com o nome do cliente (obrigatório, até 40
+  caracteres) antes de enviar pedidos e a fecha manualmente. Tabela
+  `table_sessions`; `orders.tableSessionId` é opcional (pedidos antigos ficam sem
+  cliente, sem backfill). `openTableKey` (`restaurante:mesa`, nulo ao fechar) é
+  `@unique` e garante uma sessão aberta por mesa. `POST /table-sessions` é
+  idempotente pelo `id` do cliente; sem `tableSessionId`, `POST /orders` usa a mesa
+  aberta e recusa se não houver. Evento `REALTIME_EVENTS.tableSessionsChanged`.
+  A fila offline guarda dois tipos de entrada (`order` e `open_table`), enviados
+  em ordem; entradas antigas sem `kind` são lidas como pedidos. Fechar mesa exige
+  conexão e é bloqueado com pedidos da mesa na fila.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e
@@ -407,4 +417,7 @@ Estrutura e convenções do scaffold:
 - Todo serviço recebe o `restaurantId` do usuário logado; o restaurante padrão
   e o primeiro gerente (`SEED_MANAGER_*` no `.env`) são criados por
   `bootstrap.service.ts`.
-- Telas: `#/atendente`, `#/cozinha` e `#/controle` (cardápio, mesas, histórico).
+- Telas: `#/atendente`, `#/cozinha` e `#/controle`. O controle tem três seções
+  (`SubNav`): `#/controle/cardapio` (mesas e cardápio, padrão), `#/controle/equipe` e
+  `#/controle/historico`. Só mesas e cardápio têm rascunho; enquanto houver alteração
+  não salva, `navigation/unsaved-changes.ts` impede qualquer troca de URL.

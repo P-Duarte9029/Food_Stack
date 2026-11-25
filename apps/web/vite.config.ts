@@ -11,7 +11,7 @@ const apiProxy = {
 };
 
 export default defineConfig({
-  server: { proxy: apiProxy },
+  server: { proxy: apiProxy, host: true },
   preview: { proxy: apiProxy },
   plugins: [
     react(),

@@ -1,9 +1,10 @@
 import { Check, CloudOff, RotateCw, TriangleAlert, X } from 'lucide-react';
 import type { Order, OrderStatus } from '@food-stack/shared';
 import { AttendantTabs } from '../components/AttendantTabs';
-import { discardQueued, retryQueued, useOutbox, type QueuedOrder } from '../offline/outbox';
+import { discardQueued, retryQueued, useOutbox, type QueuedEntry } from '../offline/outbox';
 import { useOrders } from '../orders/orders-store';
 import { STATUS_LABEL } from '../orders/status';
+import { useOpenTables } from '../table-sessions/use-open-tables';
 
 const STEPS: readonly OrderStatus[] = ['placed', 'in_preparation', 'ready'];
 
@@ -58,8 +59,13 @@ function SentOrderCard({ order }: { order: Order }) {
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-lg font-bold text-slate-900">Mesa {order.table}</h3>
-        <span className="text-sm text-slate-600">
+        <h3 className="min-w-0 break-words text-lg font-bold text-slate-900">
+          Mesa {order.table}
+          {order.customerName && (
+            <span className="font-semibold text-slate-700"> · {order.customerName}</span>
+          )}
+        </h3>
+        <span className="shrink-0 text-sm text-slate-600">
           {timeFormatter.format(new Date(order.createdAt))}
         </span>
       </div>
@@ -71,9 +77,18 @@ function SentOrderCard({ order }: { order: Order }) {
   );
 }
 
-function QueuedOrderCard({ entry }: { entry: QueuedOrder }) {
+function QueuedCard({ entry }: { entry: QueuedEntry }) {
+  const openTables = useOpenTables();
   const failed = entry.status === 'failed';
-  const { table, items } = entry.input;
+  const { table } = entry.input;
+  const customerName =
+    entry.kind === 'open_table'
+      ? entry.input.customerName
+      : openTables.find((open) => open.id === entry.input.tableSessionId)?.customerName;
+  const summary =
+    entry.kind === 'open_table'
+      ? 'Abertura de mesa'
+      : entry.input.items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
 
   return (
     <li
@@ -82,14 +97,15 @@ function QueuedOrderCard({ entry }: { entry: QueuedOrder }) {
       }`}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-lg font-bold text-slate-900">Mesa {table}</h3>
-        <span className="text-sm text-slate-700">
+        <h3 className="min-w-0 break-words text-lg font-bold text-slate-900">
+          Mesa {table}
+          {customerName && <span className="font-semibold text-slate-700"> · {customerName}</span>}
+        </h3>
+        <span className="shrink-0 text-sm text-slate-700">
           {timeFormatter.format(new Date(entry.queuedAt))}
         </span>
       </div>
-      <p className="mt-1 break-words text-sm text-slate-800">
-        {items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}
-      </p>
+      <p className="mt-1 break-words text-sm text-slate-800">{summary}</p>
       <p
         className={`mt-3 flex items-start gap-1.5 text-sm font-semibold ${
           failed ? 'text-red-900' : 'text-amber-900'
@@ -101,7 +117,7 @@ function QueuedOrderCard({ entry }: { entry: QueuedOrder }) {
           <CloudOff aria-hidden className="mt-0.5 size-4 shrink-0" />
         )}
         <span className="break-words">
-          {failed ? `Não enviado: ${entry.error ?? 'pedido recusado'}` : 'Aguardando conexão para enviar'}
+          {failed ? `Não enviado: ${entry.error ?? 'recusado pelo servidor'}` : 'Aguardando conexão para enviar'}
         </span>
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -142,7 +158,7 @@ export function SentOrdersScreen() {
           </h2>
           <ul className="mt-3 space-y-3">
             {queued.map((entry) => (
-              <QueuedOrderCard key={entry.input.id} entry={entry} />
+              <QueuedCard key={entry.input.id} entry={entry} />
             ))}
           </ul>
         </section>

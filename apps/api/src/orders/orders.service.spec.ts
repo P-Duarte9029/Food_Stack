@@ -17,6 +17,8 @@ const record = (status: OrderStatus) => ({
   items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 2 }],
 });
 
+const openSession = { findFirst: vi.fn().mockResolvedValue({ id: 'session-1' }) };
+
 function setup(prisma: Record<string, unknown>) {
   const publish = vi.fn();
   const service = new OrdersService(
@@ -33,6 +35,7 @@ describe('toOrder', () => {
       table: 3,
       status: 'placed',
       createdAt: '2026-11-24T12:00:00.000Z',
+      customerName: null,
       items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 2 }],
     });
   });
@@ -51,15 +54,50 @@ describe('OrdersService.create', () => {
   it('rejeita item que não existe no cardápio', async () => {
     const { service } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: openSession,
       menuItem: { findMany: vi.fn().mockResolvedValue([]) },
     });
     await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejeita pedido para mesa que não está aberta', async () => {
+    const create = vi.fn();
+    const { service } = setup({
+      restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: { findFirst: vi.fn().mockResolvedValue(null) },
+      order: { create },
+    });
+    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(
+      'Abra a mesa antes de enviar o pedido',
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('só aceita sessão aberta da mesma mesa e do mesmo restaurante', async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: 'session-1' });
+    const { service } = setup({
+      restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: { findFirst },
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      order: { create: vi.fn().mockResolvedValue(record('placed')) },
+    });
+    const sessionId = '6f1d2c3e-1111-4222-8333-444455556666';
+
+    await service.create(DEFAULT_RESTAURANT_ID, { ...input, tableSessionId: sessionId });
+
+    expect(findFirst.mock.calls[0]?.[0].where).toEqual({
+      restaurantId: DEFAULT_RESTAURANT_ID,
+      closedAt: null,
+      table: 3,
+      id: sessionId,
+    });
   });
 
   it('usa o nome do cardápio e publica order:created', async () => {
     const create = vi.fn().mockResolvedValue(record('placed'));
     const { service, publish } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: openSession,
       menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
       order: { create },
     });
@@ -69,6 +107,7 @@ describe('OrdersService.create', () => {
     expect(create.mock.calls[0]?.[0].data.items.create).toEqual([
       { menuItemId: 'm1', name: 'Pudim', quantity: 2 },
     ]);
+    expect(create.mock.calls[0]?.[0].data.tableSessionId).toBe('session-1');
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderCreated, order);
   });
 });
@@ -109,6 +148,7 @@ describe('OrdersService.create (reenvio idempotente)', () => {
       .mockResolvedValueOnce({ ...record('placed'), restaurantId: DEFAULT_RESTAURANT_ID });
     const { service, publish } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: openSession,
       menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
       order: { findUnique, create: vi.fn().mockRejectedValue({ code: 'P2002' }) },
     });

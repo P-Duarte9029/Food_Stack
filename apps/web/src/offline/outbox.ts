@@ -1,33 +1,66 @@
 import { useSyncExternalStore } from 'react';
 import { z } from 'zod';
-import { createOrderInputSchema, orderSchema, type CreateOrderInput } from '@food-stack/shared';
+import {
+  createOrderInputSchema,
+  openTableSessionInputSchema,
+  orderSchema,
+  tableSessionSchema,
+  type CreateOrderInput,
+  type OpenTableSessionInput,
+} from '@food-stack/shared';
 import { ApiError, request } from '../api/client';
 import { getAuthState, subscribeAuth } from '../auth/auth-store';
 import { upsertOrder } from '../orders/orders-store';
 import { socket } from '../realtime/socket';
+import { upsertTableSession } from '../table-sessions/table-sessions-store';
+import { generateUuid } from '../lib/uuid';
 
 const STORAGE_PREFIX = 'food-stack:outbox:';
 const RETRY_INTERVAL_MS = 15_000;
 
-const queuedOrderSchema = z.object({
-  input: createOrderInputSchema.required({ id: true }),
+const queueMeta = {
   queuedAt: z.string().datetime(),
   status: z.enum(['pending', 'failed']),
   error: z.string().optional(),
-});
-export type QueuedOrder = z.infer<typeof queuedOrderSchema>;
+};
 
-const queueSchema = z.array(queuedOrderSchema);
+const queuedOrderSchema = z.object({
+  kind: z.literal('order'),
+  input: createOrderInputSchema.required({ id: true }),
+  ...queueMeta,
+});
+const queuedOpenTableSchema = z.object({
+  kind: z.literal('open_table'),
+  input: openTableSessionInputSchema.required({ id: true }),
+  ...queueMeta,
+});
+
+// Entradas gravadas antes de existir `kind` eram sempre pedidos.
+const withKind = (value: unknown): unknown =>
+  typeof value === 'object' && value !== null && !('kind' in value)
+    ? { ...value, kind: 'order' }
+    : value;
+
+const queuedEntrySchema = z.preprocess(
+  withKind,
+  z.discriminatedUnion('kind', [queuedOrderSchema, queuedOpenTableSchema]),
+);
+
+export type QueuedOrder = z.infer<typeof queuedOrderSchema>;
+export type QueuedOpenTable = z.infer<typeof queuedOpenTableSchema>;
+export type QueuedEntry = QueuedOrder | QueuedOpenTable;
+
+const queueSchema = z.array(queuedEntrySchema);
 
 let userId: string | null = null;
-let entries: readonly QueuedOrder[] = [];
+let entries: readonly QueuedEntry[] = [];
 let inflight: Promise<void> | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 
 const storageKey = (id: string): string => STORAGE_PREFIX + id;
 
-function load(id: string): readonly QueuedOrder[] {
+function load(id: string): readonly QueuedEntry[] {
   try {
     const raw = localStorage.getItem(storageKey(id));
     const parsed = queueSchema.safeParse(raw ? JSON.parse(raw) : []);
@@ -37,7 +70,7 @@ function load(id: string): readonly QueuedOrder[] {
   }
 }
 
-function commit(next: readonly QueuedOrder[]): void {
+function commit(next: readonly QueuedEntry[]): void {
   entries = next;
   if (userId) {
     try {
@@ -50,6 +83,9 @@ function commit(next: readonly QueuedOrder[]): void {
   listeners.forEach((listener) => listener());
   syncTimer();
 }
+
+const without = (id: string): readonly QueuedEntry[] =>
+  entries.filter((entry) => entry.input.id !== id);
 
 function syncTimer(): void {
   const hasPending = entries.some((entry) => entry.status === 'pending');
@@ -67,6 +103,19 @@ const isDefinitiveRejection = (failure: unknown): failure is ApiError =>
   failure.status < 500 &&
   ![401, 408, 429].includes(failure.status);
 
+async function deliver(entry: QueuedEntry): Promise<void> {
+  if (entry.kind === 'order') {
+    const order = await request('POST', '/orders', orderSchema, entry.input);
+    commit(without(entry.input.id));
+    upsertOrder(order);
+    return;
+  }
+  const session = await request('POST', '/table-sessions', tableSessionSchema, entry.input);
+  // A mesa passa do rascunho local para a lista do servidor sem ficar um instante livre.
+  upsertTableSession(session);
+  commit(without(entry.input.id));
+}
+
 async function run(): Promise<void> {
   if (!userId) return;
   const attempted = new Set<string>();
@@ -75,9 +124,7 @@ async function run(): Promise<void> {
     if (!next) return;
     attempted.add(next.input.id);
     try {
-      const order = await request('POST', '/orders', orderSchema, next.input);
-      commit(entries.filter((entry) => entry.input.id !== next.input.id));
-      upsertOrder(order);
+      await deliver(next);
     } catch (failure) {
       if (!isDefinitiveRejection(failure)) return; // sem rede, 5xx ou sessão: tenta de novo depois
       commit(
@@ -91,7 +138,7 @@ async function run(): Promise<void> {
   }
 }
 
-/** Envia, em ordem, os pedidos pendentes. Chamadas simultâneas compartilham a mesma execução. */
+/** Envia, em ordem, as entradas pendentes. Chamadas simultâneas compartilham a mesma execução. */
 export function flushOutbox(): Promise<void> {
   if (!inflight) {
     inflight = run().finally(() => {
@@ -104,35 +151,54 @@ export function flushOutbox(): Promise<void> {
 export type SubmitResult = 'sent' | 'queued';
 
 /**
- * Registra o pedido na fila local e tenta enviar na hora. Se a rede falhar o
- * pedido fica guardado e é reenviado ao reconectar. Rejeições definitivas do
- * servidor (ex.: mesa inexistente) viram erro para o atendente corrigir.
+ * Registra a entrada na fila local e tenta enviar na hora. Se a rede falhar ela
+ * fica guardada e é reenviada ao reconectar. Rejeições definitivas do servidor
+ * (ex.: mesa inexistente ou já aberta) viram erro para o atendente corrigir.
  */
-export async function submitOrder(input: Omit<CreateOrderInput, 'id'>): Promise<SubmitResult> {
+async function enqueue(entry: QueuedEntry, failureMessage: string): Promise<SubmitResult> {
   if (!userId) throw new ApiError('Sessão não encontrada. Entre novamente.');
-  const id = crypto.randomUUID();
-  commit([
-    ...entries,
-    { input: { ...input, id }, queuedAt: new Date().toISOString(), status: 'pending' },
-  ]);
+  const id = entry.input.id;
+  commit([...entries, entry]);
 
   await flushOutbox();
-  let entry = entries.find((current) => current.input.id === id);
-  if (entry?.status === 'pending') {
+  let current = entries.find((candidate) => candidate.input.id === id);
+  if (current?.status === 'pending') {
     await flushOutbox();
-    entry = entries.find((current) => current.input.id === id);
+    current = entries.find((candidate) => candidate.input.id === id);
   }
 
-  if (!entry) return 'sent';
-  if (entry.status === 'failed') {
-    commit(entries.filter((current) => current.input.id !== id));
-    throw new ApiError(entry.error ?? 'Não foi possível enviar o pedido.');
+  if (!current) return 'sent';
+  if (current.status === 'failed') {
+    commit(without(id));
+    throw new ApiError(current.error ?? failureMessage);
   }
   return 'queued';
 }
 
+export const submitOrder = (input: Omit<CreateOrderInput, 'id'>): Promise<SubmitResult> =>
+  enqueue(
+    {
+      kind: 'order',
+      input: { ...input, id: generateUuid() },
+      queuedAt: new Date().toISOString(),
+      status: 'pending',
+    },
+    'Não foi possível enviar o pedido.',
+  );
+
+export const submitOpenTable = (input: Omit<OpenTableSessionInput, 'id'>): Promise<SubmitResult> =>
+  enqueue(
+    {
+      kind: 'open_table',
+      input: { ...input, id: generateUuid() },
+      queuedAt: new Date().toISOString(),
+      status: 'pending',
+    },
+    'Não foi possível abrir a mesa.',
+  );
+
 export function discardQueued(id: string): void {
-  commit(entries.filter((entry) => entry.input.id !== id));
+  commit(without(id));
 }
 
 export function retryQueued(id: string): void {
@@ -149,7 +215,7 @@ const subscribe = (listener: () => void): (() => void) => {
   return () => listeners.delete(listener);
 };
 
-export const useOutbox = (): readonly QueuedOrder[] => useSyncExternalStore(subscribe, () => entries);
+export const useOutbox = (): readonly QueuedEntry[] => useSyncExternalStore(subscribe, () => entries);
 
 // A fila pertence ao usuário logado: troca de usuário carrega a fila do outro.
 subscribeAuth(() => {

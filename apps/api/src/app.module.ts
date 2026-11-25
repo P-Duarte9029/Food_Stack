@@ -14,6 +14,8 @@ import { PrismaModule } from './prisma.service';
 import { RealtimeModule } from './realtime/realtime.gateway';
 import { RestaurantController } from './restaurant/restaurant.controller';
 import { RestaurantService } from './restaurant/restaurant.service';
+import { TableSessionsController } from './table-sessions/table-sessions.controller';
+import { TableSessionsService } from './table-sessions/table-sessions.service';
 import { UsersController } from './users/users.controller';
 import { UsersService } from './users/users.service';
 
@@ -25,6 +27,7 @@ import { UsersService } from './users/users.service';
     MenuController,
     OrdersController,
     RestaurantController,
+    TableSessionsController,
     UsersController,
   ],
   providers: [
@@ -32,6 +35,7 @@ import { UsersService } from './users/users.service';
     MenuService,
     OrdersService,
     RestaurantService,
+    TableSessionsService,
     UsersService,
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
