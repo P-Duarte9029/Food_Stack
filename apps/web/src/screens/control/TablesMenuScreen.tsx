@@ -10,6 +10,7 @@ import {
   type CreateMenuItemInput,
   type MenuItem,
 } from '@food-stack/shared';
+import { CategoryAccordion } from '../../components/CategoryAccordion';
 import { CONTAINER_WIDTH } from '../../components/layout';
 import { setUnsavedChanges } from '../../navigation/unsaved-changes';
 import { generateUuid } from '../../lib/uuid';
@@ -169,15 +170,16 @@ function MenuSection({
         {rows.length === 0 ? (
           <p className="mt-3 text-sm text-slate-600">Nenhum prato cadastrado.</p>
         ) : (
-          categories.map((group) => (
-            <div key={group} className="mt-4">
-              <h3 className="break-words text-sm font-semibold uppercase tracking-wide text-slate-600">
-                {group}
-              </h3>
-              <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200">
-                {rows
-                  .filter((row) => sameCategory(row.category, group))
-                  .map((row) => (
+          categories.map((group) => {
+            const groupRows = rows.filter((row) => sameCategory(row.category, group));
+            const pending = groupRows.filter((row) => row.state !== 'saved').length;
+            return (
+            <CategoryAccordion
+              key={group}
+              title={group}
+              badge={pending > 0 ? `${pending} ${pending === 1 ? 'alteração' : 'alterações'}` : undefined}
+            >
+                {groupRows.map((row) => (
                     <li key={row.id} className="flex items-center justify-between gap-3 p-3">
                       <span className="min-w-0 break-words text-slate-900">
                         <span className={row.state === 'removed' ? 'text-slate-500 line-through' : ''}>
@@ -218,9 +220,9 @@ function MenuSection({
                       </button>
                     </li>
                   ))}
-              </ul>
-            </div>
-          ))
+            </CategoryAccordion>
+            );
+          })
         )}
       </section>
     </div>
