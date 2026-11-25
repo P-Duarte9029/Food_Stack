@@ -26,9 +26,10 @@ model Restaurant {
   tablesCount Int      @default(12)
   createdAt   DateTime @default(now())
 
-  menuItems MenuItem[]
-  orders    Order[]
-  users     User[]
+  menuItems     MenuItem[]
+  orders        Order[]
+  users         User[]
+  tableSessions TableSession[]
 
   @@map("restaurants")
 }
@@ -47,17 +48,39 @@ model MenuItem {
 }
 
 model Order {
-  id           String      @id @default(uuid())
-  restaurantId String
-  table        Int
-  status       OrderStatus @default(placed)
-  createdAt    DateTime    @default(now())
+  id             String      @id @default(uuid())
+  restaurantId   String
+  table          Int
+  status         OrderStatus @default(placed)
+  createdAt      DateTime    @default(now())
+  // Nulo nos pedidos anteriores às mesas abertas.
+  tableSessionId String?
 
-  restaurant Restaurant  @relation(fields: [restaurantId], references: [id])
-  items      OrderItem[]
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
+  tableSession TableSession? @relation(fields: [tableSessionId], references: [id])
+  items        OrderItem[]
 
   @@index([restaurantId, createdAt])
+  @@index([tableSessionId])
   @@map("orders")
+}
+
+model TableSession {
+  id           String    @id @default(uuid())
+  restaurantId String
+  table        Int
+  customerName String
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+  // "restaurante:mesa" enquanto aberta, nulo ao fechar. O unique garante uma
+  // única sessão aberta por mesa (nulos não colidem no Postgres).
+  openTableKey String?   @unique
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  orders     Order[]
+
+  @@index([restaurantId, closedAt])
+  @@map("table_sessions")
 }
 
 model OrderItem {

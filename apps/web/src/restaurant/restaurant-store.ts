@@ -12,12 +12,18 @@ import { createRemoteStore } from '../store/remote-store';
 
 const menuSchema = z.array(menuItemSchema);
 
-const menuStore = createRemoteStore<MenuItem[]>([], () => request('GET', '/menu', menuSchema));
+const menuStore = createRemoteStore<MenuItem[]>([], () => request('GET', '/menu', menuSchema), {
+  key: 'menu',
+  schema: menuSchema,
+});
 
-const settingsStore = createRemoteStore<number | null>(null, () =>
-  request('GET', '/restaurant/settings', restaurantSettingsSchema).then(
-    (settings) => settings.tablesCount,
-  ),
+const settingsStore = createRemoteStore<number | null>(
+  null,
+  () =>
+    request('GET', '/restaurant/settings', restaurantSettingsSchema).then(
+      (settings) => settings.tablesCount,
+    ),
+  { key: 'tables', schema: z.number().int().nullable() },
 );
 
 socket.on(REALTIME_EVENTS.menuChanged, (payload: unknown) => {

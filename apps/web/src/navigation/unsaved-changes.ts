@@ -1,7 +1,5 @@
 import { useSyncExternalStore } from 'react';
 
-export const GUARDED_HASH = '#/controle';
-
 let unsaved = false;
 let lastHash = location.hash;
 const listeners = new Set<() => void>();
@@ -22,7 +20,7 @@ export const useHasUnsavedChanges = (): boolean => useSyncExternalStore(subscrib
 // Registrado na importação, antes dos listeners do React, para restaurar a URL
 // antes de qualquer re-render (botão voltar, hash digitado, links externos).
 window.addEventListener('hashchange', () => {
-  if (unsaved && location.hash !== GUARDED_HASH) {
+  if (unsaved && location.hash !== lastHash) {
     history.replaceState(null, '', lastHash);
     return;
   }

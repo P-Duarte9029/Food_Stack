@@ -14,8 +14,12 @@ import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { toOrder } from './order.mapper';
 
+const isUniqueViolation = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+
 const orderInclude = {
   items: { select: { menuItemId: true, name: true, quantity: true }, orderBy: { name: 'asc' } },
+  tableSession: { select: { customerName: true } },
 } as const;
 
 @Injectable()
@@ -35,6 +39,11 @@ export class OrdersService {
   }
 
   async create(restaurantId: string, input: CreateOrderInput): Promise<Order> {
+    if (input.id) {
+      const existing = await this.findForRetry(restaurantId, input.id);
+      if (existing) return existing;
+    }
+
     const restaurant = await this.prisma.restaurant.findUniqueOrThrow({
       where: { id: restaurantId },
       select: { tablesCount: true },
@@ -42,6 +51,8 @@ export class OrdersService {
     if (input.table > restaurant.tablesCount) {
       throw new BadRequestException('Mesa inexistente');
     }
+
+    const tableSession = await this.findOpenSession(restaurantId, input);
 
     const requested = new Map<string, number>();
     for (const item of input.items) {
@@ -55,23 +66,59 @@ export class OrdersService {
       throw new BadRequestException('Item inexistente no cardápio');
     }
 
-    const record = await this.prisma.order.create({
-      data: {
-        restaurantId,
-        table: input.table,
-        items: {
-          create: menuItems.map((menuItem) => ({
-            menuItemId: menuItem.id,
-            name: menuItem.name,
-            quantity: requested.get(menuItem.id) ?? 0,
-          })),
-        },
-      },
-      include: orderInclude,
-    });
-    const order = toOrder(record);
+    let order: Order;
+    try {
+      order = toOrder(
+        await this.prisma.order.create({
+          data: {
+            id: input.id,
+            restaurantId,
+            table: input.table,
+            tableSessionId: tableSession.id,
+            items: {
+              create: menuItems.map((menuItem) => ({
+                menuItemId: menuItem.id,
+                name: menuItem.name,
+                quantity: requested.get(menuItem.id) ?? 0,
+              })),
+            },
+          },
+          include: orderInclude,
+        }),
+      );
+    } catch (error) {
+      // Dois reenvios simultâneos do mesmo pedido: o segundo apenas devolve o já criado.
+      const existing =
+        input.id && isUniqueViolation(error) ? await this.findForRetry(restaurantId, input.id) : null;
+      if (existing) return existing;
+      throw error;
+    }
     this.realtime.publish(restaurantId, REALTIME_EVENTS.orderCreated, order);
     return order;
+  }
+
+  private async findOpenSession(
+    restaurantId: string,
+    input: CreateOrderInput,
+  ): Promise<{ id: string }> {
+    const session = await this.prisma.tableSession.findFirst({
+      where: {
+        restaurantId,
+        closedAt: null,
+        table: input.table,
+        ...(input.tableSessionId ? { id: input.tableSessionId } : {}),
+      },
+      select: { id: true },
+    });
+    if (!session) throw new BadRequestException('Abra a mesa antes de enviar o pedido');
+    return session;
+  }
+
+  private async findForRetry(restaurantId: string, id: string): Promise<Order | null> {
+    const existing = await this.prisma.order.findUnique({ where: { id }, include: orderInclude });
+    if (!existing) return null;
+    if (existing.restaurantId !== restaurantId) throw new ConflictException('Identificador de pedido já utilizado');
+    return toOrder(existing);
   }
 
   async advance(restaurantId: string, id: string): Promise<Order> {

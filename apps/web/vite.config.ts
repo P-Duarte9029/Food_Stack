@@ -3,18 +3,25 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// changeOrigin desligado: o Host original precisa chegar à API, que o compara
+// com o Origin das requisições para se defender de CSRF.
+const apiProxy = {
+  '/api': { target: 'http://localhost:3000', changeOrigin: false },
+  '/socket.io': { target: 'http://localhost:3000', changeOrigin: false, ws: true },
+};
+
 export default defineConfig({
-  server: {
-    proxy: {
-      '/api': 'http://localhost:3000',
-      '/socket.io': { target: 'http://localhost:3000', ws: true },
-    },
-  },
+  server: { proxy: apiProxy, host: true },
+  preview: { proxy: apiProxy },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // A API e o socket nunca devem cair no fallback da casca do app.
+        navigateFallbackDenylist: [/^\/api/, /^\/socket\.io/],
+      },
       manifest: {
         name: 'Food Stack',
         short_name: 'Food Stack',

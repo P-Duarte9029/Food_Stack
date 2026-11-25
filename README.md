@@ -47,7 +47,7 @@ manager). Every client still operates on a single default restaurant.
 ### Progress
 
 ```text
-Overall  [██████████████░░░░░░]  68%  (13 of 19 milestones)
+Overall  [███████████████░░░░░]  74%  (14 of 19 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
@@ -80,9 +80,9 @@ Update the bar and the counts whenever a milestone is checked off.
 - [ ] Table bill closing by the cashier
 - [ ] Billing model prepared for NFC-e and Pix
 
-**Offline and release** (0/3)
+**Offline and release** (1/3)
 
-- [ ] Offline order queue and resend on reconnect
+- [x] Offline order queue and resend on reconnect
 - [ ] End-to-end tests (Playwright)
 - [ ] Production deploy
 
@@ -101,6 +101,11 @@ pnpm --filter @food-stack/api exec prisma migrate deploy
 pnpm dev:api                # http://localhost:3000/api/health
 pnpm dev:web                # http://localhost:5173 (proxies /api and /socket.io to the API)
 ```
+
+The PWA keeps working without a connection: waiters can still take orders (the menu
+and tables are cached), orders wait in a local queue and are resent when the
+connection returns. To try the service worker use `pnpm --filter @food-stack/web
+exec vite preview`, since it only runs in the production build.
 
 Other commands: `pnpm test`, `pnpm typecheck`, `pnpm build`.
 

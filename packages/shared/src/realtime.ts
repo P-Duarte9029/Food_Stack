@@ -2,6 +2,7 @@ export const REALTIME_EVENTS = {
   orderCreated: 'order:created',
   orderUpdated: 'order:updated',
   menuChanged: 'menu:changed',
+  tableSessionsChanged: 'table-sessions:changed',
   settingsChanged: 'settings:changed',
 } as const;
 
