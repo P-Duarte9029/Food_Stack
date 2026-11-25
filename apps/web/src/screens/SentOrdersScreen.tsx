@@ -32,7 +32,7 @@ function ProgressSteps({ status }: { status: OrderStatus }) {
               />
             )}
             <span
-              className={`relative grid size-7 place-items-center rounded-full border-2 text-xs font-bold ${
+              className={`relative z-10 grid size-7 place-items-center rounded-full border-2 text-xs font-bold ${
                 done
                   ? 'border-brand-600 bg-brand-600 text-white'
                   : current
