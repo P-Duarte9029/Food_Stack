@@ -82,3 +82,34 @@ describe('comandas', () => {
     expect(createOrderInputSchema.safeParse({ table: 1, items, checkId: 'x' }).success).toBe(false);
   });
 });
+
+describe('autor do pedido', () => {
+  const base = {
+    id: 'o1',
+    table: 1,
+    items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 1 }],
+    status: 'placed',
+    createdAt: '2026-11-25T12:00:00.000Z',
+  };
+
+  it('pedido antigo é lido sem autor', () => {
+    const order = orderSchema.parse(base);
+    expect(order.createdById).toBeNull();
+    expect(order.createdByName).toBeNull();
+  });
+
+  it('lê o autor do pedido', () => {
+    const order = orderSchema.parse({ ...base, createdById: 'u1', createdByName: 'Carla' });
+    expect(order.createdById).toBe('u1');
+    expect(order.createdByName).toBe('Carla');
+  });
+
+  it('o cliente não escolhe o autor ao criar o pedido', () => {
+    const parsed = createOrderInputSchema.parse({
+      table: base.table,
+      items: base.items,
+      createdById: 'outro',
+    });
+    expect('createdById' in parsed).toBe(false);
+  });
+});

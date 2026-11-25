@@ -40,7 +40,7 @@ every route, the UI only hides what the role cannot use.
 
 | Role | Screens |
 | --- | --- |
-| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). |
+| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). Gets an in-app notice when an order they created is ready. |
 | Cook | Kitchen: incoming, in-preparation and ready orders (`#/cozinha`). |
 | Manager | Everything above plus Control (`#/controle`). |
 
@@ -52,7 +52,8 @@ The Control screen has three sections:
   the same category.
 - **Team** (`#/controle/equipe`): create users with a role (waiter, cook or
   manager) and activate or deactivate them.
-- **History** (`#/controle/historico`): every order, with table and customer name.
+- **History** (`#/controle/historico`): every order, with table, customer name and
+  the waiter who created it.
 
 The layout adapts to the screen: section tabs at the top on a phone, and a side
 menu with a wider content area on desktop.

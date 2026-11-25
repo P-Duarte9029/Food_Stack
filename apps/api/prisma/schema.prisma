@@ -57,15 +57,19 @@ model Order {
   tableSessionId String?
   // Nulo nos pedidos anteriores às comandas.
   checkId        String?
+  // Atendente que criou o pedido. Nulo nos pedidos anteriores a este registro.
+  createdById    String?
 
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
   tableSession TableSession? @relation(fields: [tableSessionId], references: [id])
   check        GuestCheck?   @relation(fields: [checkId], references: [id])
+  createdBy    User?         @relation("OrderCreator", fields: [createdById], references: [id])
   items        OrderItem[]
 
   @@index([restaurantId, createdAt])
   @@index([tableSessionId])
   @@index([checkId])
+  @@index([createdById])
   @@map("orders")
 }
 
@@ -126,8 +130,9 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
-  sessions   Session[]
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+  sessions      Session[]
+  createdOrders Order[]    @relation("OrderCreator")
 
   @@index([restaurantId])
   @@map("users")

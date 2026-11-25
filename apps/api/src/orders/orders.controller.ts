@@ -20,7 +20,7 @@ export class OrdersController {
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(createOrderInputSchema)) body: CreateOrderInput,
   ): Promise<Order> {
-    return this.orders.create(user.restaurantId, body);
+    return this.orders.create(user.restaurantId, user.id, body);
   }
 
   @Patch(':id/advance')

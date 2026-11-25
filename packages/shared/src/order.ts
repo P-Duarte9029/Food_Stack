@@ -27,6 +27,9 @@ export const orderSchema = createOrderInputSchema.extend({
   status: orderStatusSchema,
   // Nome da comanda (ou de quem abriu a mesa). Pedidos antigos não têm cliente.
   customerName: z.string().nullable().default(null),
+  // Atendente que criou o pedido; nulo nos pedidos anteriores a este registro.
+  createdById: z.string().nullable().default(null),
+  createdByName: z.string().nullable().default(null),
   createdAt: z.string().datetime(),
 });
 export type Order = z.infer<typeof orderSchema>;
