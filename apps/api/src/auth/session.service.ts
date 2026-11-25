@@ -32,9 +32,16 @@ export class SessionService {
     if (!token) return null;
     const session = await this.prisma.session.findUnique({
       where: { id: hashToken(token) },
-      include: { user: true },
+      include: { user: { include: { restaurant: { select: { active: true } } } } },
     });
-    if (!session || session.expiresAt < new Date() || !session.user.active) return null;
+    if (
+      !session ||
+      session.expiresAt < new Date() ||
+      !session.user.active ||
+      !session.user.restaurant.active
+    ) {
+      return null;
+    }
     const { user } = session;
     return {
       id: user.id,

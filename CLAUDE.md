@@ -426,6 +426,17 @@ Estrutura e convenções do scaffold:
   de quem criou o pedido ou do gerente (pedidos antigos, sem autor, só do gerente).
   É idempotente. Pedido entregue some de "Pedidos enviados" e da coluna de prontos
   da cozinha e continua no histórico. Marcar como entregue exige conexão.
+- Super admin e restaurantes: o papel `super_admin` (fora de `staffRoleSchema`, então a
+  equipe de um restaurante nunca o cria) administra a plataforma e não opera dentro de
+  nenhum restaurante. Ele fica ancorado no restaurante interno `PLATFORM_RESTAURANT_ID`
+  (criado no bootstrap, escondido da lista), para `restaurantId` seguir obrigatório em
+  `users`/`AuthUser`. O primeiro vem de `SEED_SUPER_ADMIN_*` no `.env`. `/platform/restaurants`
+  (`@Roles('super_admin')`) lista, cria (restaurante vazio, sem cardápio, + primeiro
+  gerente, senha só como hash), edita (nome e mesas) e desativa (`restaurants.active`,
+  default true): desativar apaga as sessões, derruba os sockets, o login responde 403 e
+  `SessionService.validate` recusa. Tela `#/plataforma`. O isolamento entre restaurantes
+  vem de todo serviço filtrar pelo `restaurantId` do usuário logado e de uma sala de
+  tempo real por restaurante; qualquer rota nova deve seguir isso.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e

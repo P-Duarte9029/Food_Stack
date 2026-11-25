@@ -1,12 +1,17 @@
 import { z } from 'zod';
 
-export const roleSchema = z.enum(['waiter', 'cook', 'manager']);
+export const roleSchema = z.enum(['waiter', 'cook', 'manager', 'super_admin']);
 export type Role = z.infer<typeof roleSchema>;
+
+/** Papéis de dentro de um restaurante. O super admin é da plataforma e não é criado pela equipe. */
+export const staffRoleSchema = z.enum(['waiter', 'cook', 'manager']);
+export type StaffRole = z.infer<typeof staffRoleSchema>;
 
 export const ROLE_LABEL: Record<Role, string> = {
   waiter: 'Garçom',
   cook: 'Cozinheiro',
   manager: 'Gerente',
+  super_admin: 'Super admin',
 };
 
 const emailSchema = z
@@ -40,7 +45,7 @@ export const createUserInputSchema = z.object({
     .string()
     .min(MIN_PASSWORD_LENGTH, `A senha deve ter ao menos ${MIN_PASSWORD_LENGTH} caracteres`)
     .max(MAX_PASSWORD_LENGTH, `Máximo de ${MAX_PASSWORD_LENGTH} caracteres`),
-  role: roleSchema,
+  role: staffRoleSchema,
 });
 export type CreateUserInput = z.infer<typeof createUserInputSchema>;
 

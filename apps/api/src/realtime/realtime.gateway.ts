@@ -54,6 +54,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.to(roomOf(restaurantId)).emit(event, payload);
   }
 
+  /** Derruba todos os sockets de um restaurante (ex.: ao desativá-lo). */
+  disconnectRestaurant(restaurantId: string): void {
+    this.server.in(roomOf(restaurantId)).disconnectSockets(true);
+  }
+
   disconnectSession(token: string | undefined): void {
     for (const socket of this.sockets) {
       if ((socket.data as SocketData).token === token) socket.disconnect(true);

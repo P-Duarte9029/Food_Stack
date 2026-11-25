@@ -5,9 +5,9 @@ import {
   MIN_PASSWORD_LENGTH,
   ROLE_LABEL,
   createUserInputSchema,
-  roleSchema,
+  staffRoleSchema,
   userSummarySchema,
-  type Role,
+  type StaffRole,
   type UserSummary,
 } from '@food-stack/shared';
 import { request } from '../api/client';
@@ -17,7 +17,7 @@ const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
 const fieldClasses = `min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 ${focusRing}`;
 const usersSchema = z.array(userSummarySchema);
-const ROLES = roleSchema.options;
+const ROLES = staffRoleSchema.options;
 
 const messageOf = (failure: unknown, fallback: string): string =>
   failure instanceof Error ? failure.message : fallback;
@@ -28,7 +28,7 @@ export function TeamSection() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<Role>('waiter');
+  const [role, setRole] = useState<StaffRole>('waiter');
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -109,7 +109,7 @@ export function TeamSection() {
           <select
             id="equipe-papel"
             value={role}
-            onChange={(event) => setRole(roleSchema.parse(event.target.value))}
+            onChange={(event) => setRole(staffRoleSchema.parse(event.target.value))}
             className={fieldClasses}
           >
             {ROLES.map((option) => (

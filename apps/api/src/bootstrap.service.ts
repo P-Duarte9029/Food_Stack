@@ -6,6 +6,8 @@ import {
   DEFAULT_MENU,
   DEFAULT_RESTAURANT_ID,
   DEFAULT_RESTAURANT_NAME,
+  PLATFORM_RESTAURANT_ID,
+  PLATFORM_RESTAURANT_NAME,
 } from './restaurant/default-restaurant';
 
 /** Garante o restaurante padrão, o cardápio inicial e o primeiro gerente (via variáveis de ambiente). */
@@ -18,6 +20,8 @@ export class BootstrapService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     await this.ensureRestaurant();
     await this.ensureFirstManager();
+    await this.ensurePlatformRestaurant();
+    await this.ensureSuperAdmin();
   }
 
   private async ensureRestaurant(): Promise<void> {
@@ -55,5 +59,44 @@ export class BootstrapService implements OnModuleInit {
       },
     });
     this.logger.log('Primeiro gerente criado a partir das variáveis de ambiente.');
+  }
+
+  private async ensurePlatformRestaurant(): Promise<void> {
+    await this.prisma.restaurant.upsert({
+      where: { id: PLATFORM_RESTAURANT_ID },
+      update: {},
+      create: { id: PLATFORM_RESTAURANT_ID, name: PLATFORM_RESTAURANT_NAME },
+    });
+  }
+
+  private async ensureSuperAdmin(): Promise<void> {
+    const total = await this.prisma.user.count({ where: { role: 'super_admin' } });
+    if (total > 0) return;
+
+    const env = parseEnv(process.env);
+    if (!env.SEED_SUPER_ADMIN_EMAIL || !env.SEED_SUPER_ADMIN_PASSWORD) {
+      this.logger.warn(
+        'Nenhum super admin cadastrado. Defina SEED_SUPER_ADMIN_EMAIL e SEED_SUPER_ADMIN_PASSWORD para criar o primeiro.',
+      );
+      return;
+    }
+    const emailTaken = await this.prisma.user.findUnique({
+      where: { email: env.SEED_SUPER_ADMIN_EMAIL },
+      select: { id: true },
+    });
+    if (emailTaken) {
+      this.logger.warn('O e-mail de SEED_SUPER_ADMIN_EMAIL já pertence a outro usuário; super admin não criado.');
+      return;
+    }
+    await this.prisma.user.create({
+      data: {
+        restaurantId: PLATFORM_RESTAURANT_ID,
+        name: env.SEED_SUPER_ADMIN_NAME,
+        email: env.SEED_SUPER_ADMIN_EMAIL,
+        role: 'super_admin',
+        passwordHash: await hashPassword(env.SEED_SUPER_ADMIN_PASSWORD),
+      },
+    });
+    this.logger.log('Primeiro super admin criado a partir das variáveis de ambiente.');
   }
 }

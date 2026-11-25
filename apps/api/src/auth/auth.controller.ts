@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   Post,
@@ -46,11 +47,19 @@ export class AuthController {
     const key = `${request.ip ?? 'desconhecido'}|${body.email}`;
     this.limiter.assertAllowed(key);
 
-    const user = await this.prisma.user.findUnique({ where: { email: body.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: body.email },
+      include: { restaurant: { select: { active: true } } },
+    });
     const valid = await verifyPassword(body.password, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !user.active || !valid) {
       this.limiter.registerFailure(key);
       throw new UnauthorizedException('E-mail ou senha inválidos');
+    }
+
+    // Só depois de provar a senha: quem não é dono da conta não descobre se o restaurante existe.
+    if (!user.restaurant.active) {
+      throw new ForbiddenException('Este restaurante está desativado. Fale com o suporte.');
     }
 
     this.limiter.reset(key);
