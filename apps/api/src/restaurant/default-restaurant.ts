@@ -4,6 +4,11 @@ import type { MenuItem } from '@food-stack/shared';
 export const DEFAULT_RESTAURANT_ID = '00000000-0000-4000-8000-000000000001';
 export const DEFAULT_RESTAURANT_NAME = 'Restaurante padrão';
 
+// Restaurante interno que ancora o super admin (que não pertence a nenhum restaurante
+// real). Não aparece na lista da plataforma e nunca recebe dados de operação.
+export const PLATFORM_RESTAURANT_ID = '00000000-0000-4000-8000-000000000002';
+export const PLATFORM_RESTAURANT_NAME = 'Plataforma';
+
 export const DEFAULT_MENU: ReadonlyArray<Omit<MenuItem, 'id'>> = [
   { name: 'Prato feito de frango', category: 'Pratos' },
   { name: 'Prato feito de bife', category: 'Pratos' },

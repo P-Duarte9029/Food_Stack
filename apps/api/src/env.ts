@@ -16,6 +16,15 @@ const envSchema = z.object({
     emptyToUndefined,
     z.string().min(MIN_PASSWORD_LENGTH).max(MAX_PASSWORD_LENGTH).optional(),
   ),
+  SEED_SUPER_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().min(1).default('Super admin')),
+  SEED_SUPER_ADMIN_EMAIL: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().toLowerCase().email().optional(),
+  ),
+  SEED_SUPER_ADMIN_PASSWORD: z.preprocess(
+    emptyToUndefined,
+    z.string().min(MIN_PASSWORD_LENGTH).max(MAX_PASSWORD_LENGTH).optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

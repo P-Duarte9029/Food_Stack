@@ -1,5 +1,12 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { ChefHat, ConciergeBell, LogOut, SlidersHorizontal, type LucideIcon } from 'lucide-react';
+import {
+  Building2,
+  ChefHat,
+  ConciergeBell,
+  LogOut,
+  SlidersHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
 import { ROLE_LABEL, type SessionUser } from '@food-stack/shared';
 import { logout, useAuth } from './auth/auth-store';
 import { canAccess, homeScreenOf, screenFromHash, type Screen } from './auth/permissions';
@@ -12,6 +19,7 @@ import { NoticeToasts } from './components/NoticeToasts';
 import { ControlScreen } from './screens/ControlScreen';
 import { KitchenScreen } from './screens/KitchenScreen';
 import { LoginScreen } from './screens/LoginScreen';
+import { PlatformScreen } from './screens/PlatformScreen';
 import { SentOrdersScreen } from './screens/SentOrdersScreen';
 import { WaiterScreen } from './screens/WaiterScreen';
 
@@ -19,6 +27,7 @@ const TABS: ReadonlyArray<{ screen: Screen; label: string; icon: LucideIcon }> =
   { screen: 'atendente', label: 'Atendente', icon: ConciergeBell },
   { screen: 'cozinha', label: 'Cozinha', icon: ChefHat },
   { screen: 'controle', label: 'Controle', icon: SlidersHorizontal },
+  { screen: 'plataforma', label: 'Restaurantes', icon: Building2 },
 ];
 
 const subscribe = (listener: () => void): (() => void) => {
@@ -105,6 +114,7 @@ function Shell({ user }: { user: SessionUser }) {
           (hash === '#/atendente/enviados' ? <SentOrdersScreen /> : <WaiterScreen />)}
         {allowed && screen === 'cozinha' && <KitchenScreen />}
         {allowed && screen === 'controle' && <ControlScreen />}
+        {allowed && screen === 'plataforma' && <PlatformScreen />}
       </main>
     </div>
   );

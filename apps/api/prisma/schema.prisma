@@ -12,6 +12,7 @@ enum Role {
   waiter
   cook
   manager
+  super_admin
 }
 
 enum OrderStatus {
@@ -25,6 +26,8 @@ model Restaurant {
   id          String   @id @default(uuid())
   name        String
   tablesCount Int      @default(12)
+  // Restaurante desativado: ninguém dele consegue entrar.
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
   menuItems     MenuItem[]

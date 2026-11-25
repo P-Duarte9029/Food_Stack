@@ -10,6 +10,8 @@ import { MenuController } from './menu/menu.controller';
 import { MenuService } from './menu/menu.service';
 import { OrdersController } from './orders/orders.controller';
 import { OrdersService } from './orders/orders.service';
+import { PlatformController } from './platform/platform.controller';
+import { PlatformService } from './platform/platform.service';
 import { PrismaModule } from './prisma.service';
 import { RealtimeModule } from './realtime/realtime.gateway';
 import { RestaurantController } from './restaurant/restaurant.controller';
@@ -26,6 +28,7 @@ import { UsersService } from './users/users.service';
     AuthController,
     MenuController,
     OrdersController,
+    PlatformController,
     RestaurantController,
     TableSessionsController,
     UsersController,
@@ -34,6 +37,7 @@ import { UsersService } from './users/users.service';
     BootstrapService,
     MenuService,
     OrdersService,
+    PlatformService,
     RestaurantService,
     TableSessionsService,
     UsersService,

@@ -31,7 +31,8 @@ Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 | Waiter | Records table orders from a mobile device and tracks their status. |
 | Cook | Views incoming orders on the kitchen screen and updates their preparation status. |
 | Cashier | Reviews a table's consumed items and closes the bill. |
-| Manager / Admin | Manages the menu, tables and users. |
+| Manager / Admin | Manages the menu, tables and users of their restaurant. |
+| Super admin | Creates and manages the restaurants on the platform. |
 
 ## Screens
 
@@ -43,6 +44,7 @@ every route, the UI only hides what the role cannot use.
 | Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). Gets an in-app notice when an order they created is ready and marks it as delivered. |
 | Cook | Kitchen: incoming, in-preparation and ready orders (`#/cozinha`). |
 | Manager | Everything above plus Control (`#/controle`). |
+| Super admin | Restaurants (`#/plataforma`): create, edit and deactivate restaurants. |
 
 The Control screen has three sections:
 
@@ -54,6 +56,11 @@ The Control screen has three sections:
   manager) and activate or deactivate them.
 - **History** (`#/controle/historico`): every order, with table, customer name and
   the waiter who created it.
+
+The Restaurants screen (super admin only) creates a restaurant together with its first
+manager, edits its name and number of tables, and deactivates or reactivates it. A new
+restaurant starts with an empty menu and its own tables, orders and history. Deactivating
+a restaurant signs everyone out and blocks their login; the data is kept.
 
 The layout adapts to the screen: section tabs at the top on a phone, and a side
 menu with a wider content area on desktop.
@@ -91,7 +98,7 @@ operates on a single default restaurant.
 ### Progress
 
 ```text
-Overall  [███████████████░░░░░]  76%  (16 of 21 milestones)
+Overall  [███████████████░░░░░]  77%  (17 of 22 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
@@ -105,11 +112,12 @@ Update the bar and the counts whenever a milestone is checked off.
 - [x] Local environment (Docker + PostgreSQL)
 - [ ] CI (lint, type check, tests)
 
-**Data and access** (3/3)
+**Data and access** (4/4)
 
 - [x] Multi-tenant Prisma schema (`restaurant_id` on every record)
 - [x] Cookie-based session authentication
 - [x] Role-based permissions (waiter, cook, manager; cashier arrives with billing)
+- [x] Super admin that creates and manages restaurants
 
 **Order flow** (7/7)
 
@@ -141,6 +149,8 @@ pnpm install
 cp .env.example .env        # never commit .env
                             # set SEED_MANAGER_EMAIL / SEED_MANAGER_PASSWORD (10+ chars)
                             # to create the first manager on the first run
+                            # set SEED_SUPER_ADMIN_EMAIL / SEED_SUPER_ADMIN_PASSWORD (10+ chars)
+                            # to create the first super admin on the first run
 pnpm db:up                  # PostgreSQL via Docker
 pnpm --filter @food-stack/shared build
 pnpm --filter @food-stack/api exec prisma migrate deploy
@@ -153,8 +163,9 @@ and tables are cached), orders wait in a local queue and are resent when the
 connection returns. To try the service worker use `pnpm --filter @food-stack/web
 exec vite preview`, since it only runs in the production build.
 
-After the first run, sign in with the manager from `.env` and create the waiter
-and cook users in Control, Team. Restart the API after pulling changes that add
+After the first run, sign in as the super admin from `.env` to create restaurants (each
+gets its own manager), or as the manager from `.env` to run the default restaurant and
+create its waiter and cook users in Control, Team. Restart the API after pulling changes that add
 migrations (run `prisma migrate deploy` again).
 
 Other commands: `pnpm test`, `pnpm typecheck`, `pnpm build`.
@@ -186,7 +197,9 @@ any phone or kitchen screen without an app store.
   locally when the connection drops and resends them once it is back, so an
   order is never lost.
 - **Multi-tenant from day one:** every record belongs to a restaurant
-  (`restaurant_id`), so the platform can serve several restaurants.
+  (`restaurant_id`), and every query is scoped to the signed-in user's restaurant, so
+  each restaurant has its own menu, tables, orders and history. A super admin creates
+  the restaurants and does not operate inside any of them.
 - **Role-based access:** waiter, cook, cashier and manager/admin permissions,
   with cookie-based sessions (`HttpOnly`).
 - **Boundary validation:** every external input (HTTP, WebSocket, environment
