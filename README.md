@@ -40,7 +40,7 @@ every route, the UI only hides what the role cannot use.
 
 | Role | Screens |
 | --- | --- |
-| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). Gets an in-app notice when an order they created is ready. |
+| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). Gets an in-app notice when an order they created is ready and marks it as delivered. |
 | Cook | Kitchen: incoming, in-preparation and ready orders (`#/cozinha`). |
 | Manager | Everything above plus Control (`#/controle`). |
 

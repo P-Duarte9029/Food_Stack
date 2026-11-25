@@ -33,6 +33,10 @@ export const useOrders = store.use;
 export const getOrders = store.get;
 export const subscribeOrders = store.subscribe;
 
+export async function deliverOrder(id: string): Promise<void> {
+  upsertOrder(await request('PATCH', `/orders/${id}/deliver`, orderSchema));
+}
+
 export async function advanceOrder(id: string): Promise<void> {
   upsertOrder(await request('PATCH', `/orders/${id}/advance`, orderSchema));
 }
