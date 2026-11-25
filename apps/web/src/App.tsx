@@ -5,8 +5,10 @@ import { logout, useAuth } from './auth/auth-store';
 import { canAccess, homeScreenOf, screenFromHash, type Screen } from './auth/permissions';
 import { useHasUnsavedChanges } from './navigation/unsaved-changes';
 import { useOutbox } from './offline/outbox';
+import './orders/ready-notifications';
 import { useIsConnected } from './realtime/socket';
 import { CONTAINER_WIDTH } from './components/layout';
+import { NoticeToasts } from './components/NoticeToasts';
 import { ControlScreen } from './screens/ControlScreen';
 import { KitchenScreen } from './screens/KitchenScreen';
 import { LoginScreen } from './screens/LoginScreen';
@@ -97,6 +99,7 @@ function Shell({ user }: { user: SessionUser }) {
           {waitingToSend && ' Pedidos pendentes serão enviados ao reconectar.'}
         </p>
       )}
+      {allowed && screen === 'atendente' && <NoticeToasts />}
       <main className={`mx-auto ${CONTAINER_WIDTH}`}>
         {allowed && screen === 'atendente' &&
           (hash === '#/atendente/enviados' ? <SentOrdersScreen /> : <WaiterScreen />)}

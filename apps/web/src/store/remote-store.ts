@@ -12,6 +12,7 @@ export interface RemoteStore<T> {
   set: (value: T) => void;
   use: () => T;
   useLoaded: () => boolean;
+  subscribe: (listener: () => void) => () => void;
 }
 
 interface CacheOptions<T> {
@@ -115,6 +116,7 @@ export function createRemoteStore<T>(
   return {
     get: () => snapshot.value,
     set: (value) => commit({ value, loaded: true }),
+    subscribe,
     use: () => useSyncExternalStore(subscribe, () => snapshot).value,
     useLoaded: () => useSyncExternalStore(subscribe, () => snapshot).loaded,
   };

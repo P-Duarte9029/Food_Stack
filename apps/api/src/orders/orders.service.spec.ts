@@ -8,6 +8,7 @@ import { toOrder } from './order.mapper';
 import { OrdersService } from './orders.service';
 
 const createdAt = new Date('2026-11-24T12:00:00.000Z');
+const USER_ID = 'user-1';
 
 const record = (status: OrderStatus) => ({
   id: 'order-1',
@@ -39,8 +40,24 @@ describe('toOrder', () => {
       status: 'placed',
       createdAt: '2026-11-24T12:00:00.000Z',
       customerName: null,
+      createdById: null,
+      createdByName: null,
       items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 2 }],
     });
+  });
+});
+
+describe('toOrder (atendente)', () => {
+  it('expõe quem criou o pedido', () => {
+    const order = toOrder({ ...record('placed'), createdById: 'user-1', createdBy: { name: 'Carla' } });
+    expect(order.createdById).toBe('user-1');
+    expect(order.createdByName).toBe('Carla');
+  });
+
+  it('pedidos antigos ficam sem autor', () => {
+    const order = toOrder(record('placed'));
+    expect(order.createdById).toBeNull();
+    expect(order.createdByName).toBeNull();
   });
 });
 
@@ -67,7 +84,7 @@ describe('OrdersService.create', () => {
     const { service } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 2 }) },
     });
-    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(BadRequestException);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, USER_ID, input)).rejects.toThrow(BadRequestException);
   });
 
   it('rejeita item que não existe no cardápio', async () => {
@@ -76,7 +93,7 @@ describe('OrdersService.create', () => {
       tableSession: openSession,
       menuItem: { findMany: vi.fn().mockResolvedValue([]) },
     });
-    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(BadRequestException);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, USER_ID, input)).rejects.toThrow(BadRequestException);
   });
 
   it('rejeita pedido para mesa que não está aberta', async () => {
@@ -86,7 +103,7 @@ describe('OrdersService.create', () => {
       tableSession: { findFirst: vi.fn().mockResolvedValue(null) },
       order: { create },
     });
-    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(
+    await expect(service.create(DEFAULT_RESTAURANT_ID, USER_ID, input)).rejects.toThrow(
       'Abra a mesa antes de enviar o pedido',
     );
     expect(create).not.toHaveBeenCalled();
@@ -102,7 +119,7 @@ describe('OrdersService.create', () => {
     });
     const sessionId = '6f1d2c3e-1111-4222-8333-444455556666';
 
-    await service.create(DEFAULT_RESTAURANT_ID, { ...input, tableSessionId: sessionId });
+    await service.create(DEFAULT_RESTAURANT_ID, USER_ID, { ...input, tableSessionId: sessionId });
 
     expect(findFirst.mock.calls[0]?.[0].where).toEqual({
       restaurantId: DEFAULT_RESTAURANT_ID,
@@ -121,13 +138,14 @@ describe('OrdersService.create', () => {
       order: { create },
     });
 
-    const order = await service.create(DEFAULT_RESTAURANT_ID, input);
+    const order = await service.create(DEFAULT_RESTAURANT_ID, USER_ID, input);
 
     expect(create.mock.calls[0]?.[0].data.items.create).toEqual([
       { menuItemId: 'm1', name: 'Pudim', quantity: 2 },
     ]);
     expect(create.mock.calls[0]?.[0].data.tableSessionId).toBe('session-1');
     expect(create.mock.calls[0]?.[0].data.checkId).toBe('check-1');
+    expect(create.mock.calls[0]?.[0].data.createdById).toBe(USER_ID);
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderCreated, order);
   });
 });
@@ -149,13 +167,13 @@ describe('OrdersService.create (comandas)', () => {
 
   it('grava o pedido na comanda informada', async () => {
     const { service, create } = withSession(['outra', checkId]);
-    await service.create(DEFAULT_RESTAURANT_ID, { ...base, checkId });
+    await service.create(DEFAULT_RESTAURANT_ID, USER_ID, { ...base, checkId });
     expect(create.mock.calls[0]?.[0].data.checkId).toBe(checkId);
   });
 
   it('recusa comanda que não está aberta na mesa', async () => {
     const { service, create } = withSession(['outra']);
-    await expect(service.create(DEFAULT_RESTAURANT_ID, { ...base, checkId })).rejects.toThrow(
+    await expect(service.create(DEFAULT_RESTAURANT_ID, USER_ID, { ...base, checkId })).rejects.toThrow(
       'A comanda não está aberta',
     );
     expect(create).not.toHaveBeenCalled();
@@ -163,7 +181,7 @@ describe('OrdersService.create (comandas)', () => {
 
   it('exige a comanda quando há mais de uma aberta', async () => {
     const { service, create } = withSession(['a', 'b']);
-    await expect(service.create(DEFAULT_RESTAURANT_ID, base)).rejects.toThrow(
+    await expect(service.create(DEFAULT_RESTAURANT_ID, USER_ID, base)).rejects.toThrow(
       'Informe a comanda do pedido',
     );
     expect(create).not.toHaveBeenCalled();
@@ -171,13 +189,13 @@ describe('OrdersService.create (comandas)', () => {
 
   it('usa a única comanda aberta quando o pedido não informa', async () => {
     const { service, create } = withSession(['unica']);
-    await service.create(DEFAULT_RESTAURANT_ID, base);
+    await service.create(DEFAULT_RESTAURANT_ID, USER_ID, base);
     expect(create.mock.calls[0]?.[0].data.checkId).toBe('unica');
   });
 
   it('mesa aberta antes das comandas recebe o pedido sem comanda', async () => {
     const { service, create } = withSession([]);
-    await service.create(DEFAULT_RESTAURANT_ID, base);
+    await service.create(DEFAULT_RESTAURANT_ID, USER_ID, base);
     expect(create.mock.calls[0]?.[0].data.checkId).toBeNull();
   });
 });
@@ -195,7 +213,7 @@ describe('OrdersService.create (reenvio idempotente)', () => {
       },
     });
 
-    const order = await service.create(DEFAULT_RESTAURANT_ID, input);
+    const order = await service.create(DEFAULT_RESTAURANT_ID, USER_ID, input);
 
     expect(order.status).toBe('in_preparation');
     expect(create).not.toHaveBeenCalled();
@@ -208,7 +226,7 @@ describe('OrdersService.create (reenvio idempotente)', () => {
         findUnique: vi.fn().mockResolvedValue({ ...record('placed'), restaurantId: 'outro' }),
       },
     });
-    await expect(service.create(DEFAULT_RESTAURANT_ID, input)).rejects.toThrow(ConflictException);
+    await expect(service.create(DEFAULT_RESTAURANT_ID, USER_ID, input)).rejects.toThrow(ConflictException);
   });
 
   it('em corrida (violação de unicidade) devolve o pedido que venceu', async () => {
@@ -223,7 +241,7 @@ describe('OrdersService.create (reenvio idempotente)', () => {
       order: { findUnique, create: vi.fn().mockRejectedValue({ code: 'P2002' }) },
     });
 
-    const order = await service.create(DEFAULT_RESTAURANT_ID, input);
+    const order = await service.create(DEFAULT_RESTAURANT_ID, USER_ID, input);
 
     expect(order.id).toBe('order-1');
     expect(publish).not.toHaveBeenCalled();

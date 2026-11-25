@@ -21,6 +21,7 @@ const orderInclude = {
   items: { select: { menuItemId: true, name: true, quantity: true }, orderBy: { name: 'asc' } },
   tableSession: { select: { customerName: true } },
   check: { select: { name: true } },
+  createdBy: { select: { name: true } },
 } as const;
 
 @Injectable()
@@ -39,7 +40,7 @@ export class OrdersService {
     return records.map(toOrder);
   }
 
-  async create(restaurantId: string, input: CreateOrderInput): Promise<Order> {
+  async create(restaurantId: string, userId: string, input: CreateOrderInput): Promise<Order> {
     if (input.id) {
       const existing = await this.findForRetry(restaurantId, input.id);
       if (existing) return existing;
@@ -77,6 +78,7 @@ export class OrdersService {
             table: input.table,
             tableSessionId: target.tableSessionId,
             checkId: target.checkId,
+            createdById: userId,
             items: {
               create: menuItems.map((menuItem) => ({
                 menuItemId: menuItem.id,

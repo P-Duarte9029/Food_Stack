@@ -30,6 +30,8 @@ socket.on(REALTIME_EVENTS.orderCreated, onOrderEvent);
 socket.on(REALTIME_EVENTS.orderUpdated, onOrderEvent);
 
 export const useOrders = store.use;
+export const getOrders = store.get;
+export const subscribeOrders = store.subscribe;
 
 export async function advanceOrder(id: string): Promise<void> {
   upsertOrder(await request('PATCH', `/orders/${id}/advance`, orderSchema));

@@ -39,6 +39,11 @@ export function HistoryScreen() {
               <p className="mt-1 break-words text-sm text-slate-700">
                 {order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}
               </p>
+              {order.createdByName && (
+                <p className="mt-1 break-words text-sm text-slate-600">
+                  Atendente: {order.createdByName}
+                </p>
+              )}
             </li>
           ))}
         </ul>

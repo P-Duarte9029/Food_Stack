@@ -411,6 +411,15 @@ Estrutura e convenções do scaffold:
   Fechar a comanda não encerra as outras; fechar a última fecha a mesa, e fechar a
   mesa fecha todas. A fila offline também guarda `add_check`; fechar comanda ou mesa
   exige conexão.
+- Autor do pedido e aviso de pronto: `orders.createdById` (opcional, sem backfill)
+  é gravado pelo servidor a partir da sessão, nunca do cliente; `Order` expõe
+  `createdById` e `createdByName` (nulos nos pedidos antigos) e o histórico mostra o
+  atendente. `orders/ready-notifications.ts` observa o store de pedidos e, quando um
+  pedido criado pelo usuário logado muda para "pronto" depois de conhecido, empurra
+  um aviso para `notifications/notices-store.ts` (regra pura em `orders/ready-rule.ts`).
+  `NoticeToasts` mostra os avisos (10 s, dispensáveis, `aria-live`) nas telas do
+  atendente. O evento em tempo real continua indo a todo o restaurante; o filtro por
+  autor é no cliente.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e
