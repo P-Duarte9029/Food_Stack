@@ -10,7 +10,7 @@ import {
   type CreateMenuItemInput,
   type MenuItem,
 } from '@food-stack/shared';
-import { CONTROL_CONTAINER_WIDTH } from '../../components/layout';
+import { CONTAINER_WIDTH } from '../../components/layout';
 import { setUnsavedChanges } from '../../navigation/unsaved-changes';
 import { generateUuid } from '../../lib/uuid';
 import {
@@ -366,7 +366,7 @@ export function TablesMenuScreen() {
 
       {dirty && (
         <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
-          <div className={`mx-auto flex ${CONTROL_CONTAINER_WIDTH} flex-wrap items-center gap-3`}>
+          <div className={`mx-auto flex ${CONTAINER_WIDTH} flex-wrap items-center gap-3`}>
             <p role="status" className="min-w-0 flex-1 basis-48 text-sm text-slate-700">
               {changes === 0
                 ? 'Corrija o número de mesas ou descarte para continuar.'

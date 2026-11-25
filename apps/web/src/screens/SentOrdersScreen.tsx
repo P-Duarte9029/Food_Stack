@@ -1,6 +1,7 @@
 import { Check, CloudOff, RotateCw, TriangleAlert, X } from 'lucide-react';
 import type { Order, OrderStatus } from '@food-stack/shared';
 import { AttendantTabs } from '../components/AttendantTabs';
+import { SectionLayout } from '../components/SectionLayout';
 import { discardQueued, retryQueued, useOutbox, type QueuedEntry } from '../offline/outbox';
 import { useOrders } from '../orders/orders-store';
 import { STATUS_LABEL } from '../orders/status';
@@ -166,37 +167,41 @@ export function SentOrdersScreen() {
   const queued = [...useOutbox()].reverse();
 
   return (
-    <div className="mx-auto max-w-md pb-8">
-      <AttendantTabs />
-      {queued.length > 0 && (
-        <section aria-labelledby="fila-titulo" className="px-4 pt-6">
-          <h2 id="fila-titulo" className="text-lg font-bold text-slate-900">
-            Aguardando envio <span className="text-slate-600">({queued.length})</span>
-          </h2>
-          <ul className="mt-3 space-y-3">
-            {queued.map((entry) => (
-              <QueuedCard key={entry.input.id} entry={entry} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section aria-labelledby="enviados-titulo" className="px-4 pt-6">
-        <h2 id="enviados-titulo" className="text-lg font-bold text-slate-900">
-          Pedidos enviados <span className="text-slate-600">({orders.length})</span>
-        </h2>
-        {orders.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-600">
-            Nenhum pedido enviado ainda.
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {orders.map((order) => (
-              <SentOrderCard key={order.id} order={order} />
-            ))}
-          </ul>
+    <div className="mx-auto max-w-md pb-8 lg:max-w-none">
+      <SectionLayout nav={<AttendantTabs />}>
+        {queued.length > 0 && (
+          <section aria-labelledby="fila-titulo" className="px-4 pt-6 lg:p-0">
+            <h2 id="fila-titulo" className="text-lg font-bold text-slate-900">
+              Aguardando envio <span className="text-slate-600">({queued.length})</span>
+            </h2>
+            <ul className="mt-3 grid gap-3 lg:grid-cols-2 lg:items-start">
+              {queued.map((entry) => (
+                <QueuedCard key={entry.input.id} entry={entry} />
+              ))}
+            </ul>
+          </section>
         )}
-      </section>
+
+        <section
+          aria-labelledby="enviados-titulo"
+          className={`px-4 pt-6 lg:px-0 lg:pt-0 ${queued.length > 0 ? 'lg:mt-6' : ''}`}
+        >
+          <h2 id="enviados-titulo" className="text-lg font-bold text-slate-900">
+            Pedidos enviados <span className="text-slate-600">({orders.length})</span>
+          </h2>
+          {orders.length === 0 ? (
+            <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+              Nenhum pedido enviado ainda.
+            </p>
+          ) : (
+            <ul className="mt-3 grid gap-3 lg:grid-cols-2 lg:items-start">
+              {orders.map((order) => (
+                <SentOrderCard key={order.id} order={order} />
+              ))}
+            </ul>
+          )}
+        </section>
+      </SectionLayout>
     </div>
   );
 }

@@ -7,6 +7,7 @@ export function AttendantTabs() {
 
   return (
     <SubNav
+      sidebarOnDesktop
       label="Seções do atendente"
       tabs={[
         { href: '#/atendente', label: 'Novo pedido', active: !sent },

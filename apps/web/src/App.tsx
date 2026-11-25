@@ -6,7 +6,7 @@ import { canAccess, homeScreenOf, screenFromHash, type Screen } from './auth/per
 import { useHasUnsavedChanges } from './navigation/unsaved-changes';
 import { useOutbox } from './offline/outbox';
 import { useIsConnected } from './realtime/socket';
-import { CONTAINER_WIDTH, CONTROL_CONTAINER_WIDTH } from './components/layout';
+import { CONTAINER_WIDTH } from './components/layout';
 import { ControlScreen } from './screens/ControlScreen';
 import { KitchenScreen } from './screens/KitchenScreen';
 import { LoginScreen } from './screens/LoginScreen';
@@ -32,7 +32,6 @@ function Shell({ user }: { user: SessionUser }) {
   const locked = useHasUnsavedChanges();
   const waitingToSend = useOutbox().length > 0;
   const tabs = TABS.filter((tab) => canAccess(user.role, tab.screen));
-  const containerWidth = screen === 'controle' ? CONTROL_CONTAINER_WIDTH : CONTAINER_WIDTH;
 
   useEffect(() => {
     if (!allowed || hash === '') location.replace(`#/${homeScreenOf(user.role)}`);
@@ -41,7 +40,7 @@ function Shell({ user }: { user: SessionUser }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-        <div className={`mx-auto flex ${containerWidth} flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3`}>
+        <div className={`mx-auto flex ${CONTAINER_WIDTH} flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3`}>
           <h1 className="text-xl font-bold text-brand-600">Food Stack</h1>
           <div className="flex min-w-0 items-center gap-2">
             <p className="min-w-0 truncate text-right text-sm text-slate-700">
@@ -98,7 +97,7 @@ function Shell({ user }: { user: SessionUser }) {
           {waitingToSend && ' Pedidos pendentes serão enviados ao reconectar.'}
         </p>
       )}
-      <main className={`mx-auto ${containerWidth}`}>
+      <main className={`mx-auto ${CONTAINER_WIDTH}`}>
         {allowed && screen === 'atendente' &&
           (hash === '#/atendente/enviados' ? <SentOrdersScreen /> : <WaiterScreen />)}
         {allowed && screen === 'cozinha' && <KitchenScreen />}

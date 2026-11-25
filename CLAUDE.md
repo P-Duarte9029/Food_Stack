@@ -430,3 +430,7 @@ Estrutura e convenções do scaffold:
   (`SubNav`): `#/controle/cardapio` (mesas e cardápio, padrão), `#/controle/equipe` e
   `#/controle/historico`. Só mesas e cardápio têm rascunho; enquanto houver alteração
   não salva, `navigation/unsaved-changes.ts` impede qualquer troca de URL.
+  Layout: container único `max-w-7xl` (`components/layout.ts`); telas com seções
+  (controle e atendente) usam `SectionLayout` + `SubNav sidebarOnDesktop` (menu
+  lateral de 14rem a partir de `lg`, abas no topo no mobile). A cozinha não tem
+  seções e só usa o container largo.
