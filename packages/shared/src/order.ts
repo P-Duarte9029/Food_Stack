@@ -16,6 +16,8 @@ export const createOrderInputSchema = z.object({
   table: z.number().int().positive(),
   // Sem ele, o servidor usa a mesa aberta; clientes antigos continuam funcionando.
   tableSessionId: z.string().uuid().optional(),
+  // Comanda do pedido. Sem ela, vale a única comanda aberta da mesa.
+  checkId: z.string().uuid().optional(),
   items: z.array(orderItemSchema).min(1),
 });
 export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
@@ -23,7 +25,7 @@ export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
 export const orderSchema = createOrderInputSchema.extend({
   id: z.string().min(1),
   status: orderStatusSchema,
-  // Pedidos anteriores ao recurso de mesa aberta não têm cliente.
+  // Nome da comanda (ou de quem abriu a mesa). Pedidos antigos não têm cliente.
   customerName: z.string().nullable().default(null),
   createdAt: z.string().datetime(),
 });

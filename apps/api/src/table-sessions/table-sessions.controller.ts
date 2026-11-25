@@ -1,6 +1,9 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import {
+  addGuestCheckInputSchema,
   openTableSessionInputSchema,
+  type AddGuestCheckInput,
+  type GuestCheck,
   type OpenTableSessionInput,
   type TableSession,
 } from '@food-stack/shared';
@@ -32,5 +35,26 @@ export class TableSessionsController {
   @HttpCode(204)
   close(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.sessions.close(user.restaurantId, id);
+  }
+
+  @Post(':id/checks')
+  @Roles('waiter', 'manager')
+  addCheck(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(addGuestCheckInputSchema)) body: AddGuestCheckInput,
+  ): Promise<GuestCheck> {
+    return this.sessions.addCheck(user.restaurantId, id, body);
+  }
+
+  @Post(':id/checks/:checkId/close')
+  @Roles('waiter', 'manager')
+  @HttpCode(204)
+  closeCheck(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('checkId', ParseUUIDPipe) checkId: string,
+  ): Promise<void> {
+    return this.sessions.closeCheck(user.restaurantId, id, checkId);
   }
 }

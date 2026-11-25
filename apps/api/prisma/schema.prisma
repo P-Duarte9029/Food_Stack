@@ -55,13 +55,17 @@ model Order {
   createdAt      DateTime    @default(now())
   // Nulo nos pedidos anteriores às mesas abertas.
   tableSessionId String?
+  // Nulo nos pedidos anteriores às comandas.
+  checkId        String?
 
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
   tableSession TableSession? @relation(fields: [tableSessionId], references: [id])
+  check        GuestCheck?   @relation(fields: [checkId], references: [id])
   items        OrderItem[]
 
   @@index([restaurantId, createdAt])
   @@index([tableSessionId])
+  @@index([checkId])
   @@map("orders")
 }
 
@@ -76,11 +80,27 @@ model TableSession {
   // única sessão aberta por mesa (nulos não colidem no Postgres).
   openTableKey String?   @unique
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id])
   orders     Order[]
+  checks     GuestCheck[]
 
   @@index([restaurantId, closedAt])
   @@map("table_sessions")
+}
+
+/// Comanda: a conta de uma pessoa dentro da mesa aberta.
+model GuestCheck {
+  id             String    @id @default(uuid())
+  tableSessionId String
+  name           String
+  openedAt       DateTime  @default(now())
+  closedAt       DateTime?
+
+  tableSession TableSession @relation(fields: [tableSessionId], references: [id])
+  orders       Order[]
+
+  @@index([tableSessionId, closedAt])
+  @@map("guest_checks")
 }
 
 model OrderItem {
