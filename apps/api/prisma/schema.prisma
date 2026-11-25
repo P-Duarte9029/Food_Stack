@@ -43,6 +43,8 @@ model MenuItem {
   restaurantId String
   name         String
   category     String
+  // Vazio = prato sem variação de tamanho (pratos antigos).
+  sizes        String[] @default([])
   createdAt    DateTime @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id])
@@ -116,6 +118,8 @@ model OrderItem {
   orderId    String
   menuItemId String
   name       String
+  // Tamanho escolhido; nulo em pratos sem tamanhos e em pedidos antigos.
+  size       String?
   quantity   Int
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)

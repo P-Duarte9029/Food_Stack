@@ -8,6 +8,8 @@ import {
 import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
+const MENU_ITEM_SELECT = { id: true, name: true, category: true, sizes: true } as const;
+
 @Injectable()
 export class MenuService {
   constructor(
@@ -19,7 +21,7 @@ export class MenuService {
     return this.prisma.menuItem.findMany({
       where: { restaurantId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, category: true },
+      select: MENU_ITEM_SELECT,
     });
   }
 
@@ -36,7 +38,7 @@ export class MenuService {
     );
     const item = await this.prisma.menuItem.create({
       data: { ...input, category, restaurantId },
-      select: { id: true, name: true, category: true },
+      select: MENU_ITEM_SELECT,
     });
     await this.publishChange(restaurantId);
     return item;

@@ -33,6 +33,12 @@ interface PendingItem extends CreateMenuItemInput {
   tempId: string;
 }
 
+const parseSizes = (text: string): string[] =>
+  text
+    .split(',')
+    .map((size) => size.trim())
+    .filter((size) => size !== '');
+
 function TablesSection({
   value,
   error,
@@ -86,18 +92,20 @@ function MenuSection({
 }) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [sizesText, setSizesText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const categories = distinctCategories(rows.map((row) => row.category));
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const parsed = createMenuItemInputSchema.safeParse({ name, category });
+    const parsed = createMenuItemInputSchema.safeParse({ name, category, sizes: parseSizes(sizesText) });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
       return;
     }
     onAdd({ ...parsed.data, category: canonicalCategory(categories, parsed.data.category) });
     setName('');
+    setSizesText('');
     setError(null);
   };
 
@@ -151,6 +159,22 @@ function MenuSection({
               </div>
             )}
           </div>
+          <div>
+            <label htmlFor="prato-tamanhos" className="text-sm font-medium text-slate-700">
+              Tamanhos (opcional)
+            </label>
+            <input
+              id="prato-tamanhos"
+              type="text"
+              value={sizesText}
+              onChange={(event) => setSizesText(event.target.value)}
+              aria-describedby="prato-tamanhos-ajuda"
+              className={fieldClasses}
+            />
+            <p id="prato-tamanhos-ajuda" className="mt-1 text-sm text-slate-600">
+              Separe por vírgula, ex.: Pequena, Média, Grande. Deixe vazio se o prato não tem tamanhos.
+            </p>
+          </div>
           {error && (
             <p role="alert" className="text-sm text-red-700">
               {error}
@@ -193,6 +217,11 @@ function MenuSection({
                         {row.state === 'removed' && (
                           <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-900">
                             Será removido
+                          </span>
+                        )}
+                        {row.sizes.length > 0 && (
+                          <span className="block text-sm text-slate-600">
+                            Tamanhos: {row.sizes.join(', ')}
                           </span>
                         )}
                       </span>
@@ -266,6 +295,7 @@ export function TablesMenuScreen() {
         id: item.tempId,
         name: item.name,
         category: item.category,
+        sizes: item.sizes,
         state: 'added',
       }),
     ),
@@ -298,7 +328,7 @@ export function TablesMenuScreen() {
         setTablesDraft(null);
       }
       for (const item of added) {
-        await addMenuItem({ name: item.name, category: item.category });
+        await addMenuItem({ name: item.name, category: item.category, sizes: item.sizes });
         setAdded((current) => current.filter((entry) => entry.tempId !== item.tempId));
       }
       for (const id of removedIds) {

@@ -1,3 +1,4 @@
+import { orderItemLabel } from '@food-stack/shared';
 import { StatusBadge } from '../../components/StatusBadge';
 import { useOrders } from '../../orders/orders-store';
 
@@ -37,7 +38,7 @@ export function HistoryScreen() {
                 <StatusBadge status={order.status} />
               </div>
               <p className="mt-1 break-words text-sm text-slate-700">
-                {order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}
+                {order.items.map((item) => `${item.quantity}x ${orderItemLabel(item)}`).join(', ')}
               </p>
               {order.createdByName && (
                 <p className="mt-1 break-words text-sm text-slate-600">

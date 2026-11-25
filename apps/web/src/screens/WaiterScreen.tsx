@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
-import { distinctCategories, sameCategory } from '@food-stack/shared';
+import { distinctCategories, orderItemLabel, sameCategory } from '@food-stack/shared';
 import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
 import { CategoryAccordion } from '../components/CategoryAccordion';
 import { AttendantTabs } from '../components/AttendantTabs';
 import { SectionLayout } from '../components/SectionLayout';
+import { menuLines } from '../orders/order-lines';
 import { submitOrder, type SubmitResult } from '../offline/outbox';
 import { useIsConnected } from '../realtime/socket';
 import { useOpenTables } from '../table-sessions/use-open-tables';
@@ -33,12 +34,12 @@ export function WaiterScreen() {
   const session = openTables.find((open) => open.table === table);
   const activeCheck = session?.checks.find((check) => check.id === checkId) ?? session?.checks[0];
 
-  const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
-  const totalUnits = selected.reduce((sum, item) => sum + (quantities[item.id] ?? 0), 0);
+  const selected = menu.flatMap(menuLines).filter((line) => (quantities[line.key] ?? 0) > 0);
+  const totalUnits = selected.reduce((sum, line) => sum + (quantities[line.key] ?? 0), 0);
   const canSend = session !== undefined && totalUnits > 0;
 
-  const change = (id: string, delta: number) =>
-    setQuantities((current) => ({ ...current, [id]: Math.max(0, (current[id] ?? 0) + delta) }));
+  const change = (key: string, delta: number) =>
+    setQuantities((current) => ({ ...current, [key]: Math.max(0, (current[key] ?? 0) + delta) }));
 
   const send = async () => {
     if (table === null || !session || totalUnits === 0 || sending) return;
@@ -49,10 +50,11 @@ export function WaiterScreen() {
         table,
         tableSessionId: session.id,
         checkId: activeCheck?.id,
-        items: selected.map((item) => ({
-          menuItemId: item.id,
-          name: item.name,
-          quantity: quantities[item.id] ?? 0,
+        items: selected.map((line) => ({
+          menuItemId: line.menuItemId,
+          name: line.name,
+          size: line.size,
+          quantity: quantities[line.key] ?? 0,
         })),
       });
       setSentTable(table);
@@ -155,9 +157,11 @@ export function WaiterScreen() {
           )}
           <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
             {categories.map((category) => {
-              const categoryItems = menu.filter((item) => sameCategory(item.category, category));
-              const categoryUnits = categoryItems.reduce(
-                (sum, item) => sum + (quantities[item.id] ?? 0),
+              const categoryLines = menu
+                .filter((item) => sameCategory(item.category, category))
+                .flatMap(menuLines);
+              const categoryUnits = categoryLines.reduce(
+                (sum, line) => sum + (quantities[line.key] ?? 0),
                 0,
               );
               return (
@@ -170,17 +174,23 @@ export function WaiterScreen() {
                       : undefined
                   }
                 >
-                  {categoryItems.map((item) => {
-                    const quantity = quantities[item.id] ?? 0;
+                  {categoryLines.map((line) => {
+                    const quantity = quantities[line.key] ?? 0;
+                    const label = orderItemLabel(line);
                     return (
-                      <li key={item.id} className="flex items-center justify-between gap-3 p-3">
-                        <span className="min-w-0 break-words text-slate-900">{item.name}</span>
+                      <li key={line.key} className="flex items-center justify-between gap-3 p-3">
+                        <span className="min-w-0 break-words text-slate-900">
+                          {line.name}
+                          {line.size && (
+                            <span className="block text-sm font-medium text-slate-600">{line.size}</span>
+                          )}
+                        </span>
                         <span className="flex shrink-0 items-center gap-2">
                           <button
                             type="button"
-                            aria-label={`Remover ${item.name}`}
+                            aria-label={`Remover ${label}`}
                             disabled={quantity === 0}
-                            onClick={() => change(item.id, -1)}
+                            onClick={() => change(line.key, -1)}
                             className={`grid size-11 place-items-center rounded-lg border border-slate-300 text-slate-900 disabled:opacity-40 ${focusRing}`}
                           >
                             <Minus aria-hidden className="size-5" />
@@ -193,8 +203,8 @@ export function WaiterScreen() {
                           </span>
                           <button
                             type="button"
-                            aria-label={`Adicionar ${item.name}`}
-                            onClick={() => change(item.id, 1)}
+                            aria-label={`Adicionar ${label}`}
+                            onClick={() => change(line.key, 1)}
                             className={`grid size-11 place-items-center rounded-lg bg-brand-600 text-white active:bg-brand-700 ${focusRing}`}
                           >
                             <Plus aria-hidden className="size-5" />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, CloudOff, PackageCheck, RotateCw, TriangleAlert, X } from 'lucide-react';
-import type { Order, OrderStatus } from '@food-stack/shared';
+import { orderItemLabel, type Order, type OrderStatus } from '@food-stack/shared';
 import { AttendantTabs } from '../components/AttendantTabs';
 import { SectionLayout } from '../components/SectionLayout';
 import { discardQueued, retryQueued, useOutbox, type QueuedEntry } from '../offline/outbox';
@@ -92,7 +92,7 @@ function SentOrderCard({ order }: { order: Order }) {
         </span>
       </div>
       <p className="mt-1 break-words text-sm text-slate-700">
-        {order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ')}
+        {order.items.map((item) => `${item.quantity}x ${orderItemLabel(item)}`).join(', ')}
       </p>
       <ProgressSteps status={order.status} />
       {canDeliver && (
@@ -134,7 +134,7 @@ function describeQueued(
       return {
         table: entry.input.table,
         customerName: check?.name ?? session?.customerName,
-        summary: entry.input.items.map((item) => `${item.quantity}x ${item.name}`).join(', '),
+        summary: entry.input.items.map((item) => `${item.quantity}x ${orderItemLabel(item)}`).join(', '),
       };
     }
   }
