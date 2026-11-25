@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ChevronDown, Minus, Plus, Send } from 'lucide-react';
+import { Minus, Plus, Send } from 'lucide-react';
 import { distinctCategories, sameCategory } from '@food-stack/shared';
 import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
+import { CategoryAccordion } from '../components/CategoryAccordion';
 import { AttendantTabs } from '../components/AttendantTabs';
 import { SectionLayout } from '../components/SectionLayout';
 import { submitOrder, type SubmitResult } from '../offline/outbox';
@@ -18,7 +19,6 @@ export function WaiterScreen() {
   const [table, setTable] = useState<number | null>(null);
   const [checkId, setCheckId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Quantities>({});
-  const [openCategories, setOpenCategories] = useState<ReadonlySet<string>>(new Set());
   const [sentTable, setSentTable] = useState<number | null>(null);
   const [sentResult, setSentResult] = useState<SubmitResult>('sent');
   const connected = useIsConnected();
@@ -36,13 +36,6 @@ export function WaiterScreen() {
   const selected = menu.filter((item) => (quantities[item.id] ?? 0) > 0);
   const totalUnits = selected.reduce((sum, item) => sum + (quantities[item.id] ?? 0), 0);
   const canSend = session !== undefined && totalUnits > 0;
-
-  const toggleCategory = (category: string) =>
-    setOpenCategories((current) => {
-      const next = new Set(current);
-      if (!next.delete(category)) next.add(category);
-      return next;
-    });
 
   const change = (id: string, delta: number) =>
     setQuantities((current) => ({ ...current, [id]: Math.max(0, (current[id] ?? 0) + delta) }));
@@ -161,44 +154,21 @@ export function WaiterScreen() {
             </p>
           )}
           <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
-            {categories.map((category, index) => {
-              const open = openCategories.has(category);
-              const panelId = `categoria-${index}`;
+            {categories.map((category) => {
               const categoryItems = menu.filter((item) => sameCategory(item.category, category));
               const categoryUnits = categoryItems.reduce(
                 (sum, item) => sum + (quantities[item.id] ?? 0),
                 0,
               );
               return (
-              <div key={category} className="mt-4">
-                <h3>
-                  <button
-                    type="button"
-                    aria-expanded={open}
-                    aria-controls={panelId}
-                    onClick={() => toggleCategory(category)}
-                    className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left active:bg-slate-100 ${focusRing}`}
-                  >
-                    <span className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-slate-700">
-                      {category}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      {categoryUnits > 0 && (
-                        <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">
-                          {categoryUnits} {categoryUnits === 1 ? 'item' : 'itens'}
-                        </span>
-                      )}
-                      <ChevronDown
-                        aria-hidden
-                        className={`size-5 text-slate-600 transition-transform ${open ? 'rotate-180' : ''}`}
-                      />
-                    </span>
-                  </button>
-                </h3>
-                <ul
-                  id={panelId}
-                  hidden={!open}
-                  className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white"
+                <CategoryAccordion
+                  key={category}
+                  title={category}
+                  badge={
+                    categoryUnits > 0
+                      ? `${categoryUnits} ${categoryUnits === 1 ? 'item' : 'itens'}`
+                      : undefined
+                  }
                 >
                   {categoryItems.map((item) => {
                     const quantity = quantities[item.id] ?? 0;
@@ -233,8 +203,7 @@ export function WaiterScreen() {
                       </li>
                     );
                   })}
-                </ul>
-              </div>
+                </CategoryAccordion>
               );
             })}
           </div>

@@ -460,3 +460,6 @@ Estrutura e convenções do scaffold:
   (controle e atendente) usam `SectionLayout` + `SubNav sidebarOnDesktop` (menu
   lateral de 14rem a partir de `lg`, abas no topo no mobile). A cozinha não tem
   seções e só usa o container largo.
+- Categorias do cardápio: no atendente e no controle, os pratos ficam recolhidos por
+  categoria (`components/CategoryAccordion.tsx`, fechado por padrão, com badge opcional
+  de contagem). Reutilize o componente em novas listas por categoria.
