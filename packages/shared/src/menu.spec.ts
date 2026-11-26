@@ -6,7 +6,23 @@ describe('createMenuItemInputSchema', () => {
     expect(createMenuItemInputSchema.parse({ name: '  Pudim ', category: ' Sobremesas ' })).toEqual({
       name: 'Pudim',
       category: 'Sobremesas',
+      sizes: [],
     });
+  });
+
+  it('aceita tamanhos e remove espaços nas pontas', () => {
+    expect(
+      createMenuItemInputSchema.parse({ name: 'Batata', category: 'Porções', sizes: [' Média ', 'Grande'] }).sizes,
+    ).toEqual(['Média', 'Grande']);
+  });
+
+  it('rejeita tamanhos repetidos (ignorando caixa), vazios ou em excesso', () => {
+    const base = { name: 'Batata', category: 'Porções' };
+    expect(createMenuItemInputSchema.safeParse({ ...base, sizes: ['Média', 'media'] }).success).toBe(false);
+    expect(createMenuItemInputSchema.safeParse({ ...base, sizes: [' '] }).success).toBe(false);
+    expect(
+      createMenuItemInputSchema.safeParse({ ...base, sizes: ['1', '2', '3', '4', '5', '6', '7'] }).success,
+    ).toBe(false);
   });
 
   it('rejeita nome ou categoria vazios', () => {

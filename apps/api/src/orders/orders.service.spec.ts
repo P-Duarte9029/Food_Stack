@@ -47,7 +47,7 @@ describe('toOrder', () => {
       customerName: null,
       createdById: null,
       createdByName: null,
-      items: [{ menuItemId: 'm1', name: 'Pudim', quantity: 2 }],
+      items: [{ menuItemId: 'm1', name: 'Pudim', size: null, quantity: 2 }],
     });
   });
 });
@@ -119,7 +119,7 @@ describe('OrdersService.create', () => {
     const { service } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
       tableSession: { findFirst },
-      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim', sizes: [] }]) },
       order: { create: vi.fn().mockResolvedValue(record('placed')) },
     });
     const sessionId = '6f1d2c3e-1111-4222-8333-444455556666';
@@ -139,19 +139,67 @@ describe('OrdersService.create', () => {
     const { service, publish } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
       tableSession: openSession,
-      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim', sizes: [] }]) },
       order: { create },
     });
 
     const order = await service.create(DEFAULT_RESTAURANT_ID, USER_ID, input);
 
     expect(create.mock.calls[0]?.[0].data.items.create).toEqual([
-      { menuItemId: 'm1', name: 'Pudim', quantity: 2 },
+      { menuItemId: 'm1', name: 'Pudim', size: null, quantity: 2 },
     ]);
     expect(create.mock.calls[0]?.[0].data.tableSessionId).toBe('session-1');
     expect(create.mock.calls[0]?.[0].data.checkId).toBe('check-1');
     expect(create.mock.calls[0]?.[0].data.createdById).toBe(USER_ID);
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderCreated, order);
+  });
+});
+
+describe('OrdersService.create (tamanhos)', () => {
+  const sizedMenu = [{ id: 'm1', name: 'Batata frita', sizes: ['Pequena', 'Grande'] }];
+
+  const run = (items: Array<{ menuItemId: string; name: string; size?: string; quantity: number }>, menu = sizedMenu) => {
+    const create = vi.fn().mockResolvedValue(record('placed'));
+    const { service } = setup({
+      restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: openSession,
+      menuItem: { findMany: vi.fn().mockResolvedValue(menu) },
+      order: { create },
+    });
+    return { create, result: service.create(DEFAULT_RESTAURANT_ID, USER_ID, { table: 3, items }) };
+  };
+
+  it('grava uma linha por tamanho, com a grafia do cardápio', async () => {
+    const { create, result } = run([
+      { menuItemId: 'm1', name: 'x', size: 'grande', quantity: 1 },
+      { menuItemId: 'm1', name: 'x', size: 'Pequena', quantity: 2 },
+      { menuItemId: 'm1', name: 'x', size: 'Grande', quantity: 1 },
+    ]);
+    await result;
+    expect(create.mock.calls[0]?.[0].data.items.create).toEqual([
+      { menuItemId: 'm1', name: 'Batata frita', size: 'Grande', quantity: 2 },
+      { menuItemId: 'm1', name: 'Batata frita', size: 'Pequena', quantity: 2 },
+    ]);
+  });
+
+  it('exige o tamanho quando o prato tem tamanhos', async () => {
+    await expect(run([{ menuItemId: 'm1', name: 'x', quantity: 1 }]).result).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('recusa tamanho que o prato não tem', async () => {
+    await expect(
+      run([{ menuItemId: 'm1', name: 'x', size: 'Gigante', quantity: 1 }]).result,
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('recusa tamanho em prato sem tamanhos', async () => {
+    await expect(
+      run([{ menuItemId: 'm1', name: 'x', size: 'Grande', quantity: 1 }], [
+        { id: 'm1', name: 'Pudim', sizes: [] },
+      ]).result,
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
 
@@ -164,7 +212,7 @@ describe('OrdersService.create (comandas)', () => {
     const { service } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
       tableSession: sessionWith(checkIds),
-      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim', sizes: [] }]) },
       order: { create },
     });
     return { service, create };
@@ -242,7 +290,7 @@ describe('OrdersService.create (reenvio idempotente)', () => {
     const { service, publish } = setup({
       restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
       tableSession: openSession,
-      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim' }]) },
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim', sizes: [] }]) },
       order: { findUnique, create: vi.fn().mockRejectedValue({ code: 'P2002' }) },
     });
 

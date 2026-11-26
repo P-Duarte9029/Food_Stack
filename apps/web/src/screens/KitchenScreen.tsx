@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Clock } from 'lucide-react';
-import type { Order, OrderStatus } from '@food-stack/shared';
+import { orderItemLabel, type Order, type OrderStatus } from '@food-stack/shared';
 import { StatusBadge } from '../components/StatusBadge';
 import { advanceOrder, useOrders } from '../orders/orders-store';
 import { ADVANCE_LABEL, STATUS_LABEL } from '../orders/status';
@@ -29,7 +29,7 @@ function OrderCard({ order }: { order: Order }) {
       <ul className="mt-3 space-y-1 text-lg text-slate-900">
         {order.items.map((item) => (
           <li key={item.menuItemId} className="break-words">
-            <span className="font-bold tabular-nums">{item.quantity}x</span> {item.name}
+            <span className="font-bold tabular-nums">{item.quantity}x</span> {orderItemLabel(item)}
           </li>
         ))}
       </ul>

@@ -9,7 +9,7 @@ export interface OrderRecord {
   createdBy?: { name: string } | null;
   tableSession?: { customerName: string } | null;
   check?: { name: string } | null;
-  items: ReadonlyArray<{ menuItemId: string; name: string; quantity: number }>;
+  items: ReadonlyArray<{ menuItemId: string; name: string; size?: string | null; quantity: number }>;
 }
 
 export const toOrder = (record: OrderRecord): Order => ({
@@ -20,5 +20,10 @@ export const toOrder = (record: OrderRecord): Order => ({
   customerName: record.check?.name ?? record.tableSession?.customerName ?? null,
   createdById: record.createdById ?? null,
   createdByName: record.createdBy?.name ?? null,
-  items: record.items.map(({ menuItemId, name, quantity }) => ({ menuItemId, name, quantity })),
+  items: record.items.map(({ menuItemId, name, size, quantity }) => ({
+    menuItemId,
+    name,
+    size: size ?? null,
+    quantity,
+  })),
 });

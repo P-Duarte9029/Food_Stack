@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createOrderInputSchema, nextOrderStatus } from './order';
+import { createOrderInputSchema, nextOrderStatus, orderItemLabel } from './order';
 
 describe('nextOrderStatus', () => {
   it('avança placed -> in_preparation -> ready', () => {
@@ -34,5 +34,16 @@ describe('status entregue', () => {
   it('a cozinha não avança além de pronto, e entregue é final', () => {
     expect(nextOrderStatus('ready')).toBeNull();
     expect(nextOrderStatus('delivered')).toBeNull();
+  });
+});
+
+describe('orderItemLabel', () => {
+  it('acrescenta o tamanho quando existe', () => {
+    expect(orderItemLabel({ name: 'Batata frita', size: 'Grande' })).toBe('Batata frita (Grande)');
+  });
+
+  it('usa só o nome sem tamanho (pratos e pedidos antigos)', () => {
+    expect(orderItemLabel({ name: 'Pudim' })).toBe('Pudim');
+    expect(orderItemLabel({ name: 'Pudim', size: null })).toBe('Pudim');
   });
 });

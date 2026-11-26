@@ -463,3 +463,10 @@ Estrutura e convenções do scaffold:
 - Categorias do cardápio: no atendente e no controle, os pratos ficam recolhidos por
   categoria (`components/CategoryAccordion.tsx`, fechado por padrão, com badge opcional
   de contagem). Reutilize o componente em novas listas por categoria.
+- Tamanhos de prato: `menu_items.sizes` (`String[]`, default vazio) lista os tamanhos de
+  um prato; vazio = sem variação (pratos antigos, sem backfill). Sem preço por tamanho
+  (cobrança está fora do MVP). `order_items.size` é opcional e é gravado pelo servidor:
+  prato com tamanhos exige um tamanho válido (comparado sem caixa/acento, grafia do
+  cardápio), prato sem tamanhos recusa. O pedido tem uma linha por prato e tamanho
+  (`orders/order-lines.ts` no front); as telas exibem `orderItemLabel` (shared), ex.:
+  "Batata frita (Grande)". No Controle os tamanhos são digitados separados por vírgula.

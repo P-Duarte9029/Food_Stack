@@ -6,9 +6,15 @@ export type OrderStatus = z.infer<typeof orderStatusSchema>;
 export const orderItemSchema = z.object({
   menuItemId: z.string().min(1),
   name: z.string().min(1),
+  // Tamanho escolhido; ausente em pratos sem tamanhos e em pedidos antigos.
+  size: z.string().min(1).nullish(),
   quantity: z.number().int().positive(),
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;
+
+/** Texto do item para telas: "Batata frita (Grande)" ou só o nome. */
+export const orderItemLabel = (item: Pick<OrderItem, 'name' | 'size'>): string =>
+  item.size ? `${item.name} (${item.size})` : item.name;
 
 export const createOrderInputSchema = z.object({
   // Gerado no cliente: torna o reenvio de pedidos da fila offline idempotente.

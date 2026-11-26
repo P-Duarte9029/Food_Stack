@@ -5,9 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '../generated/prisma/client';
 import {
   REALTIME_EVENTS,
   nextOrderStatus,
+  sameSize,
   type CreateOrderInput,
   type Order,
   type Role,
@@ -16,15 +18,30 @@ import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { toOrder } from './order.mapper';
 
+/** Tamanho gravado no pedido: exigido (e validado) só quando o prato tem tamanhos cadastrados. */
+const resolveSize = (menuItem: { sizes: string[] }, requested: string | null): string | null => {
+  if (menuItem.sizes.length === 0) {
+    if (requested !== null) throw new BadRequestException('Este prato não tem tamanhos');
+    return null;
+  }
+  if (requested === null) throw new BadRequestException('Informe o tamanho do prato');
+  const match = menuItem.sizes.find((size) => sameSize(size, requested));
+  if (!match) throw new BadRequestException('Tamanho inexistente para este prato');
+  return match;
+};
+
 const isUniqueViolation = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 
 const orderInclude = {
-  items: { select: { menuItemId: true, name: true, quantity: true }, orderBy: { name: 'asc' } },
+  items: {
+    select: { menuItemId: true, name: true, size: true, quantity: true },
+    orderBy: [{ name: 'asc' }, { size: 'asc' }],
+  },
   tableSession: { select: { customerName: true } },
   check: { select: { name: true } },
   createdBy: { select: { name: true } },
-} as const;
+} satisfies Prisma.OrderInclude;
 
 @Injectable()
 export class OrdersService {
@@ -58,16 +75,29 @@ export class OrdersService {
 
     const target = await this.resolveTarget(restaurantId, input);
 
-    const requested = new Map<string, number>();
-    for (const item of input.items) {
-      requested.set(item.menuItemId, (requested.get(item.menuItemId) ?? 0) + item.quantity);
-    }
+    const menuItemIds = [...new Set(input.items.map((item) => item.menuItemId))];
     const menuItems = await this.prisma.menuItem.findMany({
-      where: { restaurantId, id: { in: [...requested.keys()] } },
-      select: { id: true, name: true },
+      where: { restaurantId, id: { in: menuItemIds } },
+      select: { id: true, name: true, sizes: true },
     });
-    if (menuItems.length !== requested.size) {
+    if (menuItems.length !== menuItemIds.length) {
       throw new BadRequestException('Item inexistente no cardápio');
+    }
+    const menuItemById = new Map(menuItems.map((menuItem) => [menuItem.id, menuItem]));
+
+    // Uma linha por prato e tamanho; o mesmo par repetido soma as quantidades.
+    const lines = new Map<
+      string,
+      { menuItemId: string; name: string; size: string | null; quantity: number }
+    >();
+    for (const item of input.items) {
+      const menuItem = menuItemById.get(item.menuItemId);
+      if (!menuItem) throw new BadRequestException('Item inexistente no cardápio');
+      const size = resolveSize(menuItem, item.size ?? null);
+      const key = `${menuItem.id}|${size ?? ''}`;
+      const line = lines.get(key);
+      if (line) line.quantity += item.quantity;
+      else lines.set(key, { menuItemId: menuItem.id, name: menuItem.name, size, quantity: item.quantity });
     }
 
     let order: Order;
@@ -82,11 +112,7 @@ export class OrdersService {
             checkId: target.checkId,
             createdById: userId,
             items: {
-              create: menuItems.map((menuItem) => ({
-                menuItemId: menuItem.id,
-                name: menuItem.name,
-                quantity: requested.get(menuItem.id) ?? 0,
-              })),
+              create: [...lines.values()],
             },
           },
           include: orderInclude,
