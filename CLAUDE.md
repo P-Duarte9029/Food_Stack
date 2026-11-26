@@ -470,3 +470,9 @@ Estrutura e convenções do scaffold:
   cardápio), prato sem tamanhos recusa. O pedido tem uma linha por prato e tamanho
   (`orders/order-lines.ts` no front); as telas exibem `orderItemLabel` (shared), ex.:
   "Batata frita (Grande)". No Controle os tamanhos são digitados separados por vírgula.
+- Edição de prato: `PUT /menu/:id` (gerente) substitui nome, categoria e tamanhos; pedidos
+  já feitos guardam o nome da época. No Controle a edição entra no rascunho (`edited`,
+  badge "Editado") e só vai ao servidor em "Salvar"; editar de volta aos valores originais
+  descarta a edição, e remover o prato vence a edição. O formulário de novo prato e o de
+  edição são o mesmo componente (`screens/control/DishForm.tsx`). Pratos "Novo" ainda
+  não salvos não são editáveis: descarte e inclua de novo.

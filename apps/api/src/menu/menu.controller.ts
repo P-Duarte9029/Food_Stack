@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+} from '@nestjs/common';
 import {
   createMenuItemInputSchema,
   type CreateMenuItemInput,
@@ -25,6 +35,16 @@ export class MenuController {
     @Body(new ZodValidationPipe(createMenuItemInputSchema)) body: CreateMenuItemInput,
   ): Promise<MenuItem> {
     return this.menu.create(user.restaurantId, body);
+  }
+
+  @Put(':id')
+  @Roles('manager')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(createMenuItemInputSchema)) body: CreateMenuItemInput,
+  ): Promise<MenuItem> {
+    return this.menu.update(user.restaurantId, id, body);
   }
 
   @Delete(':id')
