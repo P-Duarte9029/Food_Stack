@@ -476,3 +476,10 @@ Estrutura e convenções do scaffold:
   descarta a edição, e remover o prato vence a edição. O formulário de novo prato e o de
   edição são o mesmo componente (`screens/control/DishForm.tsx`). Pratos "Novo" ainda
   não salvos não são editáveis: descarte e inclua de novo.
+- Deploy: Google Cloud (Cloud Run + Cloud SQL PostgreSQL, região `southamerica-east1`).
+  Uma imagem (`Dockerfile`, alvo `runtime`) serve a API e o front na mesma origem
+  (`WEB_DIST_DIR`); o alvo `migrate` roda `prisma migrate deploy` como Cloud Run Job
+  antes de cada release. Atrás do proxy, `TRUST_PROXY=1` (IP real no limite de login) e
+  `WEB_ORIGIN` com a URL pública. Mantenha `--max-instances=1`: Socket.IO e o limitador de
+  login estão em memória (escalar exige adaptador Redis e limitador compartilhado). Passo a
+  passo em `docs/deploy-gcp.md`.

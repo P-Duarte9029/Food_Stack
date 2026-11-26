@@ -1,0 +1,27 @@
+# Gera as duas imagens (API + front e migrations) no Artifact Registry.
+# Uso: gcloud builds submit --config cloudbuild.yaml   (veja docs/deploy-gcp.md)
+substitutions:
+  _REGION: southamerica-east1
+  _REPO: food-stack
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --target=runtime
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --target=migrate
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/migrate:$BUILD_ID
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/migrate:latest
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/migrate:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/migrate:latest
