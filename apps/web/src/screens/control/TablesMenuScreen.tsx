@@ -1,9 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Plus, RotateCcw, Save, Trash2, Undo2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Pencil, Plus, RotateCcw, Save, Trash2, Undo2 } from 'lucide-react';
 import {
   MAX_TABLES,
-  canonicalCategory,
-  createMenuItemInputSchema,
   distinctCategories,
   sameCategory,
   tablesCountSchema,
@@ -11,6 +9,7 @@ import {
   type MenuItem,
 } from '@food-stack/shared';
 import { CategoryAccordion } from '../../components/CategoryAccordion';
+import { DishForm } from './DishForm';
 import { CONTAINER_WIDTH } from '../../components/layout';
 import { setUnsavedChanges } from '../../navigation/unsaved-changes';
 import { generateUuid } from '../../lib/uuid';
@@ -18,6 +17,7 @@ import {
   addMenuItem,
   removeMenuItem,
   setTablesCount,
+  updateMenuItem,
   useMenu,
   useTablesCount,
 } from '../../restaurant/restaurant-store';
@@ -25,19 +25,12 @@ import {
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
 const fieldClasses = `min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 ${focusRing}`;
-const primaryButton = `flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 font-semibold text-white active:bg-brand-700 ${focusRing}`;
 
-type MenuRow = MenuItem & { state: 'saved' | 'added' | 'removed' };
+type MenuRow = MenuItem & { state: 'saved' | 'edited' | 'added' | 'removed' };
 
 interface PendingItem extends CreateMenuItemInput {
   tempId: string;
 }
-
-const parseSizes = (text: string): string[] =>
-  text
-    .split(',')
-    .map((size) => size.trim())
-    .filter((size) => size !== '');
 
 function TablesSection({
   value,
@@ -82,32 +75,18 @@ function TablesSection({
 function MenuSection({
   rows,
   onAdd,
+  onEdit,
   onToggleRemoval,
   onDiscardAdded,
 }: {
   rows: readonly MenuRow[];
   onAdd: (input: CreateMenuItemInput) => void;
+  onEdit: (id: string, input: CreateMenuItemInput) => void;
   onToggleRemoval: (id: string) => void;
   onDiscardAdded: (tempId: string) => void;
 }) {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [sizesText, setSizesText] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const categories = distinctCategories(rows.map((row) => row.category));
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const parsed = createMenuItemInputSchema.safeParse({ name, category, sizes: parseSizes(sizesText) });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
-      return;
-    }
-    onAdd({ ...parsed.data, category: canonicalCategory(categories, parsed.data.category) });
-    setName('');
-    setSizesText('');
-    setError(null);
-  };
 
   return (
     <div className="space-y-4">
@@ -115,76 +94,16 @@ function MenuSection({
         <h2 id="novo-prato-titulo" className="text-lg font-bold">
           Novo prato
         </h2>
-        <form onSubmit={submit} className="mt-3 space-y-3" noValidate>
-          <div>
-            <label htmlFor="prato-nome" className="text-sm font-medium text-slate-700">
-              Nome do prato
-            </label>
-            <input
-              id="prato-nome"
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className={fieldClasses}
-            />
-          </div>
-          <div>
-            <label htmlFor="prato-categoria" className="text-sm font-medium text-slate-700">
-              Categoria
-            </label>
-            <input
-              id="prato-categoria"
-              type="text"
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className={fieldClasses}
-            />
-            {categories.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Categorias existentes">
-                {categories.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={sameCategory(category, option)}
-                    onClick={() => setCategory(option)}
-                    className={`min-h-11 max-w-full break-words rounded-full border px-3 text-sm font-medium ${focusRing} ${
-                      sameCategory(category, option)
-                        ? 'border-brand-700 bg-brand-50 text-brand-700'
-                        : 'border-slate-300 bg-white text-slate-800'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <label htmlFor="prato-tamanhos" className="text-sm font-medium text-slate-700">
-              Tamanhos (opcional)
-            </label>
-            <input
-              id="prato-tamanhos"
-              type="text"
-              value={sizesText}
-              onChange={(event) => setSizesText(event.target.value)}
-              aria-describedby="prato-tamanhos-ajuda"
-              className={fieldClasses}
-            />
-            <p id="prato-tamanhos-ajuda" className="mt-1 text-sm text-slate-600">
-              Separe por vírgula, ex.: Pequena, Média, Grande. Deixe vazio se o prato não tem tamanhos.
-            </p>
-          </div>
-          {error && (
-            <p role="alert" className="text-sm text-red-700">
-              {error}
-            </p>
-          )}
-          <button type="submit" className={`${primaryButton} w-full sm:w-auto`}>
-            <Plus aria-hidden className="size-5" />
-            Incluir prato
-          </button>
-        </form>
+        <div className="mt-3">
+          <DishForm
+            idPrefix="prato"
+            categories={categories}
+            submitLabel="Incluir prato"
+            submitIcon={<Plus aria-hidden className="size-5" />}
+            clearOnSubmit
+            onSubmit={onAdd}
+          />
+        </div>
       </section>
 
       <section aria-labelledby="cardapio-titulo" className="rounded-xl border border-slate-200 bg-white p-4">
@@ -203,7 +122,23 @@ function MenuSection({
               title={group}
               badge={pending > 0 ? `${pending} ${pending === 1 ? 'alteração' : 'alterações'}` : undefined}
             >
-                {groupRows.map((row) => (
+                {groupRows.map((row) =>
+                  editingId === row.id ? (
+                    <li key={row.id} className="p-3">
+                      <DishForm
+                        idPrefix={`editar-${row.id}`}
+                        categories={categories}
+                        initial={row}
+                        submitLabel="Aplicar"
+                        submitIcon={<Check aria-hidden className="size-5" />}
+                        onSubmit={(input) => {
+                          onEdit(row.id, input);
+                          setEditingId(null);
+                        }}
+                        onCancel={() => setEditingId(null)}
+                      />
+                    </li>
+                  ) : (
                     <li key={row.id} className="flex items-center justify-between gap-3 p-3">
                       <span className="min-w-0 break-words text-slate-900">
                         <span className={row.state === 'removed' ? 'text-slate-500 line-through' : ''}>
@@ -212,6 +147,11 @@ function MenuSection({
                         {row.state === 'added' && (
                           <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">
                             Novo
+                          </span>
+                        )}
+                        {row.state === 'edited' && (
+                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                            Editado
                           </span>
                         )}
                         {row.state === 'removed' && (
@@ -225,6 +165,17 @@ function MenuSection({
                           </span>
                         )}
                       </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {(row.state === 'saved' || row.state === 'edited') && (
+                          <button
+                            type="button"
+                            aria-label={`Editar ${row.name}`}
+                            onClick={() => setEditingId(row.id)}
+                            className={`grid size-11 shrink-0 place-items-center rounded-lg border border-slate-300 text-slate-800 ${focusRing}`}
+                          >
+                            <Pencil aria-hidden className="size-5" />
+                          </button>
+                        )}
                       <button
                         type="button"
                         aria-label={
@@ -247,8 +198,10 @@ function MenuSection({
                           <Trash2 aria-hidden className="size-5" />
                         )}
                       </button>
+                      </span>
                     </li>
-                  ))}
+                  ),
+                )}
             </CategoryAccordion>
             );
           })
@@ -265,6 +218,7 @@ export function TablesMenuScreen() {
   const [tablesDraft, setTablesDraft] = useState<string | null>(null);
   const [added, setAdded] = useState<readonly PendingItem[]>([]);
   const [removed, setRemoved] = useState<readonly string[]>([]);
+  const [edited, setEdited] = useState<Readonly<Record<string, CreateMenuItemInput>>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -279,16 +233,21 @@ export function TablesMenuScreen() {
     tablesDraft !== null && parsedTables.success && parsedTables.data !== tablesCount;
   const removedIds = removed.filter((id) => menu.some((item) => item.id === id));
 
-  const changes = (tablesChanged ? 1 : 0) + added.length + removedIds.length;
+  const editedEntries = Object.entries(edited).filter(
+    ([id]) => menu.some((item) => item.id === id) && !removedIds.includes(id),
+  );
+
+  const changes = (tablesChanged ? 1 : 0) + added.length + removedIds.length + editedEntries.length;
   const dirty = changes > 0 || tablesError !== null;
   const canSave = changes > 0 && tablesError === null && !saving;
 
   const rows: MenuRow[] = [
     ...menu.map(
-      (item): MenuRow => ({
-        ...item,
-        state: removedIds.includes(item.id) ? 'removed' : 'saved',
-      }),
+      (item): MenuRow => {
+        if (removedIds.includes(item.id)) return { ...item, state: 'removed' };
+        const draft = edited[item.id];
+        return draft ? { ...item, ...draft, state: 'edited' } : { ...item, state: 'saved' };
+      },
     ),
     ...added.map(
       (item): MenuRow => ({
@@ -316,6 +275,7 @@ export function TablesMenuScreen() {
     setTablesDraft(null);
     setAdded([]);
     setRemoved([]);
+    setEdited({});
   };
 
   const save = async () => {
@@ -330,6 +290,10 @@ export function TablesMenuScreen() {
       for (const item of added) {
         await addMenuItem({ name: item.name, category: item.category, sizes: item.sizes });
         setAdded((current) => current.filter((entry) => entry.tempId !== item.tempId));
+      }
+      for (const [id, input] of editedEntries) {
+        await updateMenuItem(id, input);
+        setEdited((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)));
       }
       for (const id of removedIds) {
         await removeMenuItem(id);
@@ -381,6 +345,19 @@ export function TablesMenuScreen() {
             onAdd={(input) => {
               touch();
               setAdded((current) => [...current, { ...input, tempId: generateUuid() }]);
+            }}
+            onEdit={(id, input) => {
+              touch();
+              const original = menu.find((item) => item.id === id);
+              const unchanged =
+                original !== undefined &&
+                original.name === input.name &&
+                original.category === input.category &&
+                original.sizes.join('|') === input.sizes.join('|');
+              setEdited((current) => {
+                const rest = Object.fromEntries(Object.entries(current).filter(([key]) => key !== id));
+                return unchanged ? rest : { ...rest, [id]: input };
+              });
             }}
             onToggleRemoval={(id) => {
               touch();

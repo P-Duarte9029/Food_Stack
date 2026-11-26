@@ -48,6 +48,11 @@ export async function addMenuItem(input: CreateMenuItemInput): Promise<void> {
   await reloadMenu();
 }
 
+export async function updateMenuItem(id: string, input: CreateMenuItemInput): Promise<void> {
+  await request('PUT', `/menu/${id}`, menuItemSchema, input);
+  await reloadMenu();
+}
+
 export async function removeMenuItem(id: string): Promise<void> {
   await request('DELETE', `/menu/${id}`, z.null());
   await reloadMenu();
