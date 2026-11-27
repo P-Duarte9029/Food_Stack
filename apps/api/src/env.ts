@@ -7,6 +7,10 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(3000),
   WEB_ORIGIN: z.string().min(1).default('http://localhost:5173'),
+  // Quantos proxies reversos ficam na frente da API (Cloud Run = 1). Com 0 o IP vem do socket.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Pasta do front buildado; quando definida, a API o serve na mesma origem (produção).
+  WEB_DIST_DIR: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   SEED_MANAGER_NAME: z.preprocess(emptyToUndefined, z.string().min(1).default('Gerente')),
   SEED_MANAGER_EMAIL: z.preprocess(
     emptyToUndefined,

@@ -8,6 +8,18 @@ describe('parseEnv', () => {
     expect(env.WEB_ORIGIN).toBe('http://localhost:5173');
   });
 
+  it('não confia em proxy nem serve o front por padrão', () => {
+    const env = parseEnv({ DATABASE_URL: 'postgresql://x' });
+    expect(env.TRUST_PROXY).toBe(0);
+    expect(env.WEB_DIST_DIR).toBeUndefined();
+  });
+
+  it('lê TRUST_PROXY como número e trata WEB_DIST_DIR vazio como ausente', () => {
+    const env = parseEnv({ DATABASE_URL: 'postgresql://x', TRUST_PROXY: '1', WEB_DIST_DIR: '' });
+    expect(env.TRUST_PROXY).toBe(1);
+    expect(env.WEB_DIST_DIR).toBeUndefined();
+  });
+
   it('falha sem DATABASE_URL', () => {
     expect(() => parseEnv({})).toThrow();
   });

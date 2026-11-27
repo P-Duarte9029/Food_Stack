@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+apps/api/src/generated
+.git
+.env
+.env.*
+!.env.example
+**/.agents
+**/.claude
+**/.windsurf
+apps/api/skills-lock.json
+docs
+specs

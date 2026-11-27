@@ -500,3 +500,10 @@ Estrutura e convenções do scaffold:
   "quem pode entregar" fica em `orders/delivery-rule.ts` (`canDeliverOrder`,
   `countReadyToDeliver`), usada pelo botão de entregar e pelo contador: reutilize, não
   duplique. O badge âmbar de "aguardando envio" (fila offline) continua separado.
+- Deploy: Google Cloud (Cloud Run + Cloud SQL PostgreSQL, região `southamerica-east1`).
+  Uma imagem (`Dockerfile`, alvo `runtime`) serve a API e o front na mesma origem
+  (`WEB_DIST_DIR`); o alvo `migrate` roda `prisma migrate deploy` como Cloud Run Job
+  antes de cada release. Atrás do proxy, `TRUST_PROXY=1` (IP real no limite de login) e
+  `WEB_ORIGIN` com a URL pública. Mantenha `--max-instances=1`: Socket.IO e o limitador de
+  login estão em memória (escalar exige adaptador Redis e limitador compartilhado). Passo a
+  passo em `docs/deploy-gcp.md`.
