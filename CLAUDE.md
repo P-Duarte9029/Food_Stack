@@ -482,3 +482,8 @@ Estrutura e convenções do scaffold:
   servidor grava vazio como nulo. O campo fica na seção "3. Observações" do atendente, vai
   na fila offline junto com o pedido e aparece destacado no card da cozinha, em "Pedidos
   enviados" e no histórico do Controle. É por pedido, não por item.
+- Contador de prontos: a aba "Pedidos enviados" (`AttendantTabs`) mostra um badge verde com os
+  pedidos prontos que o usuário pode entregar; ao entregar, o pedido sai da contagem. A regra
+  "quem pode entregar" fica em `orders/delivery-rule.ts` (`canDeliverOrder`,
+  `countReadyToDeliver`), usada pelo botão de entregar e pelo contador: reutilize, não
+  duplique. O badge âmbar de "aguardando envio" (fila offline) continua separado.
