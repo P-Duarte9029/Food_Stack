@@ -6,6 +6,7 @@ export interface OrderRecord {
   status: OrderStatus;
   createdAt: Date;
   createdById?: string | null;
+  notes?: string | null;
   createdBy?: { name: string } | null;
   tableSession?: { customerName: string } | null;
   check?: { name: string } | null;
@@ -20,6 +21,7 @@ export const toOrder = (record: OrderRecord): Order => ({
   customerName: record.check?.name ?? record.tableSession?.customerName ?? null,
   createdById: record.createdById ?? null,
   createdByName: record.createdBy?.name ?? null,
+  notes: record.notes ?? null,
   items: record.items.map(({ menuItemId, name, size, quantity }) => ({
     menuItemId,
     name,
