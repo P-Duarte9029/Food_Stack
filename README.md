@@ -18,7 +18,8 @@ In a traditional restaurant flow, orders travel on paper:
 
 Food_Stack digitizes the whole order flow, from table to kitchen to bill.
 
-1. The waiter selects a table on their phone and adds the items ordered.
+1. The waiter selects a table on their phone, adds the items ordered and, if
+   needed, a note for the kitchen (for example "no onions").
 2. The order is sent in real time to the kitchen screen.
 3. The cook sees incoming orders, prepares them and marks them as ready.
 4. The waiter is notified and delivers the order to the table.
@@ -41,8 +42,8 @@ every route, the UI only hides what the role cannot use.
 
 | Role | Screens |
 | --- | --- |
-| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). Gets an in-app notice when an order they created is ready and marks it as delivered. |
-| Cook | Kitchen: incoming, in-preparation and ready orders (`#/cozinha`). |
+| Waiter | Waiter: new order (`#/atendente`) and sent orders (`#/atendente/enviados`). Gets an in-app notice when an order they created is ready and marks it as delivered. The "Sent orders" tab shows a counter of ready orders waiting to be delivered, which goes down as they are delivered. |
+| Cook | Kitchen: incoming, in-preparation and ready orders (`#/cozinha`). The waiter's note is highlighted on the order card. |
 | Manager | Everything above plus Control (`#/controle`). |
 | Super admin | Restaurants (`#/plataforma`): create, edit and deactivate restaurants. |
 
@@ -51,11 +52,14 @@ The Control screen has three sections:
 - **Tables and menu** (`#/controle/cardapio`): number of tables and menu items,
   saved together. Leaving the section with unsaved changes is blocked. Menu
   categories are matched ignoring case and accents, so "Doce" and "doce" are
-  the same category.
+  the same category. A dish can have optional sizes (for example "Small, Large")
+  and existing dishes can be edited; like the rest of the section, edits only
+  reach the server when saved. Orders already placed keep the dish name from
+  when they were made.
 - **Team** (`#/controle/equipe`): create users with a role (waiter, cook or
   manager) and activate or deactivate them.
-- **History** (`#/controle/historico`): every order, with table, customer name and
-  the waiter who created it.
+- **History** (`#/controle/historico`): every order, with table, customer name,
+  the kitchen note (when there is one) and the waiter who created it.
 
 The Restaurants screen (super admin only) creates a restaurant together with its first
 manager, edits its name and number of tables, and deactivates or reactivates it. A new
@@ -74,7 +78,8 @@ menu with a wider content area on desktop.
    Each person has their own check.
 3. **Take orders.** Every order belongs to a check. With more than one check open,
    the waiter chooses whose it is. The customer name shows in sent orders and in
-   the history.
+   the history. An order can carry an optional note for the kitchen (up to 200
+   characters), sent together with it, including through the offline queue.
 4. **Close.** Closing a check leaves the others open; closing the last one also
    closes the table. "Close table" closes every open check at once.
 
@@ -98,7 +103,7 @@ operates on a single default restaurant.
 ### Progress
 
 ```text
-Overall  [███████████████░░░░░]  77%  (17 of 22 milestones)
+Overall  [████████████████░░░░]  80%  (20 of 25 milestones)
 ```
 
 Update the bar and the counts whenever a milestone is checked off.
@@ -119,7 +124,7 @@ Update the bar and the counts whenever a milestone is checked off.
 - [x] Role-based permissions (waiter, cook, manager; cashier arrives with billing)
 - [x] Super admin that creates and manages restaurants
 
-**Order flow** (7/7)
+**Order flow** (10/10)
 
 - [x] Menu management
 - [x] Table management
@@ -128,6 +133,9 @@ Update the bar and the counts whenever a milestone is checked off.
 - [x] "Ready" notification to the waiter
 - [x] Open tables with the customer's name
 - [x] Per-person checks (comandas) inside a table
+- [x] Optional dish sizes and editing of existing dishes
+- [x] Order notes for the kitchen
+- [x] Counter of ready orders on the "Sent orders" tab
 
 **Billing** (0/2)
 
