@@ -58,3 +58,18 @@ export const updateUserInputSchema = z.object({
   active: z.boolean(),
 });
 export type UpdateUserInput = z.infer<typeof updateUserInputSchema>;
+
+/** Edição de perfil pelo super admin: só os campos informados mudam (senha em branco não vai). */
+export const updateUserProfileInputSchema = createUserInputSchema
+  .partial()
+  .refine((value) => Object.values(value).some((field) => field !== undefined), {
+    message: 'Informe ao menos um campo para alterar',
+  });
+export type UpdateUserProfileInput = z.infer<typeof updateUserProfileInputSchema>;
+
+/** PATCH da equipe pelo super admin: ou ativa/desativa, ou edita o perfil, nunca os dois juntos. */
+export const platformUpdateUserInputSchema = z.union([
+  updateUserInputSchema.strict(),
+  createUserInputSchema.partial().strict().pipe(updateUserProfileInputSchema),
+]);
+export type PlatformUpdateUserInput = z.infer<typeof platformUpdateUserInputSchema>;

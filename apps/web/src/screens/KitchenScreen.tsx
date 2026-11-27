@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, MessageSquareText } from 'lucide-react';
 import { orderItemLabel, type Order, type OrderStatus } from '@food-stack/shared';
 import { StatusBadge } from '../components/StatusBadge';
 import { advanceOrder, useOrders } from '../orders/orders-store';
@@ -33,6 +33,15 @@ function OrderCard({ order }: { order: Order }) {
           </li>
         ))}
       </ul>
+      {order.notes && (
+        <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-100 px-3 py-2 text-base font-medium text-amber-900">
+          <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0" />
+          <span className="min-w-0 whitespace-pre-line break-words">
+            <span className="sr-only">Observação: </span>
+            {order.notes}
+          </span>
+        </p>
+      )}
       <div className="mt-4 flex items-center justify-between gap-3">
         <StatusBadge status={order.status} />
         {action && (

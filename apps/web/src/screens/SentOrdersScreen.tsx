@@ -5,6 +5,7 @@ import { AttendantTabs } from '../components/AttendantTabs';
 import { SectionLayout } from '../components/SectionLayout';
 import { discardQueued, retryQueued, useOutbox, type QueuedEntry } from '../offline/outbox';
 import { useAuth } from '../auth/auth-store';
+import { canDeliverOrder } from '../orders/delivery-rule';
 import { deliverOrder, useOrders } from '../orders/orders-store';
 import { STATUS_LABEL } from '../orders/status';
 import { useOpenTables, type OpenTable } from '../table-sessions/use-open-tables';
@@ -62,10 +63,7 @@ function SentOrderCard({ order }: { order: Order }) {
   const { user } = useAuth();
   const [delivering, setDelivering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canDeliver =
-    order.status === 'ready' &&
-    user !== null &&
-    (user.role === 'manager' || order.createdById === user.id);
+  const canDeliver = canDeliverOrder(order, user);
 
   const deliver = async () => {
     setDelivering(true);
@@ -94,6 +92,11 @@ function SentOrderCard({ order }: { order: Order }) {
       <p className="mt-1 break-words text-sm text-slate-700">
         {order.items.map((item) => `${item.quantity}x ${orderItemLabel(item)}`).join(', ')}
       </p>
+      {order.notes && (
+        <p className="mt-1 break-words text-sm text-slate-700">
+          <span className="font-semibold">Obs.:</span> {order.notes}
+        </p>
+      )}
       <ProgressSteps status={order.status} />
       {canDeliver && (
         <button

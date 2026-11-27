@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Minus, Plus, Send } from 'lucide-react';
-import { distinctCategories, orderItemLabel, sameCategory } from '@food-stack/shared';
+import {
+  distinctCategories,
+  ORDER_NOTES_MAX_LENGTH,
+  orderItemLabel,
+  sameCategory,
+} from '@food-stack/shared';
 import { useMenu, useMenuLoaded, useTablesCount } from '../restaurant/restaurant-store';
 import { CategoryAccordion } from '../components/CategoryAccordion';
 import { AttendantTabs } from '../components/AttendantTabs';
@@ -20,6 +25,7 @@ export function WaiterScreen() {
   const [table, setTable] = useState<number | null>(null);
   const [checkId, setCheckId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Quantities>({});
+  const [notes, setNotes] = useState('');
   const [sentTable, setSentTable] = useState<number | null>(null);
   const [sentResult, setSentResult] = useState<SubmitResult>('sent');
   const connected = useIsConnected();
@@ -50,6 +56,7 @@ export function WaiterScreen() {
         table,
         tableSessionId: session.id,
         checkId: activeCheck?.id,
+        notes: notes.trim() || undefined,
         items: selected.map((line) => ({
           menuItemId: line.menuItemId,
           name: line.name,
@@ -61,6 +68,7 @@ export function WaiterScreen() {
       setSentResult(result);
       setTable(null);
       setQuantities({});
+      setNotes('');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Não foi possível enviar o pedido.');
     } finally {
@@ -217,6 +225,27 @@ export function WaiterScreen() {
               );
             })}
           </div>
+        </section>
+
+        <section aria-labelledby="obs-titulo" className="px-4 pt-8 lg:px-0">
+          <h2 id="obs-titulo" className="text-lg font-bold text-slate-900">
+            3. Observações
+          </h2>
+          <label htmlFor="obs-pedido" className="mt-3 block text-sm font-medium text-slate-700">
+            Recado para a cozinha (opcional)
+          </label>
+          <textarea
+            id="obs-pedido"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            maxLength={ORDER_NOTES_MAX_LENGTH}
+            rows={3}
+            placeholder="Ex.: sem cebola, carne bem passada"
+            className={`mt-1 w-full resize-none rounded-lg border border-slate-300 bg-white p-3 text-slate-900 placeholder:text-slate-500 ${focusRing}`}
+          />
+          <p className="mt-1 text-right text-xs text-slate-600" aria-live="polite">
+            {notes.length}/{ORDER_NOTES_MAX_LENGTH}
+          </p>
         </section>
 
       </SectionLayout>

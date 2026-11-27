@@ -14,6 +14,7 @@ import {
   type Order,
   type Role,
 } from '@food-stack/shared';
+import { isUniqueViolation } from '../common/prisma-errors';
 import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { toOrder } from './order.mapper';
@@ -29,9 +30,6 @@ const resolveSize = (menuItem: { sizes: string[] }, requested: string | null): s
   if (!match) throw new BadRequestException('Tamanho inexistente para este prato');
   return match;
 };
-
-const isUniqueViolation = (error: unknown): boolean =>
-  typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 
 const orderInclude = {
   items: {
@@ -111,6 +109,7 @@ export class OrdersService {
             tableSessionId: target.tableSessionId,
             checkId: target.checkId,
             createdById: userId,
+            notes: input.notes || null,
             items: {
               create: [...lines.values()],
             },

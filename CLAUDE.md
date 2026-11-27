@@ -436,7 +436,14 @@ Estrutura e convenções do scaffold:
   default true): desativar apaga as sessões, derruba os sockets, o login responde 403 e
   `SessionService.validate` recusa. Tela `#/plataforma`. O isolamento entre restaurantes
   vem de todo serviço filtrar pelo `restaurantId` do usuário logado e de uma sala de
-  tempo real por restaurante; qualquer rota nova deve seguir isso.
+  tempo real por restaurante; qualquer rota nova deve seguir isso. Única exceção: a equipe
+  de cada restaurante, em `/platform/restaurants/:restaurantId/users` (listar, criar,
+  ativar/desativar e editar nome, e-mail, papel e senha; `PlatformUsersController`, só
+  `super_admin`; trocar papel ou senha encerra as sessões do usuário). Ali o restaurante vem da
+  rota, validado por `PlatformService.assertManageable` (que recusa o restaurante interno),
+  e reaproveita `UsersService`, com as mesmas regras (e-mail único, último gerente ativo,
+  inclusive ao rebaixar). A edição é só do super admin; o gerente não edita perfis. O
+  front reaproveita `TeamSection` (`basePath`) no botão "Equipe" de cada restaurante.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e
@@ -476,6 +483,23 @@ Estrutura e convenções do scaffold:
   descarta a edição, e remover o prato vence a edição. O formulário de novo prato e o de
   edição são o mesmo componente (`screens/control/DishForm.tsx`). Pratos "Novo" ainda
   não salvos não são editáveis: descarte e inclua de novo.
+- Observação do pedido: `orders.notes` (`String?`, nulo = sem observação e pedidos antigos,
+  sem backfill) leva um recado do atendente para a cozinha. O limite é
+  `ORDER_NOTES_MAX_LENGTH` (200, em `packages/shared`), aplicado no schema Zod com `trim`; o
+  servidor grava vazio como nulo. O campo fica na seção "3. Observações" do atendente, vai
+  na fila offline junto com o pedido e aparece destacado no card da cozinha, em "Pedidos
+  enviados" e no histórico do Controle. É por pedido, não por item.
+- Histórico por período: o histórico do Controle abre no dia de hoje e filtra por intervalo
+  (`De`/`Até`, inputs `date` nativos, inclusivo; data vazia deixa a ponta aberta, "Todo o
+  período" limpa as duas) e separa os pedidos por dia, do mais recente ao mais antigo. O dia é
+  o do fuso do navegador. O filtro é no cliente, sobre os pedidos que o `orders-store` já tem
+  (`GET /orders` devolve todos); a lógica pura está em `orders/history-period.ts`. Se o volume
+  crescer, o próximo passo é filtrar no servidor.
+- Contador de prontos: a aba "Pedidos enviados" (`AttendantTabs`) mostra um badge verde com os
+  pedidos prontos que o usuário pode entregar; ao entregar, o pedido sai da contagem. A regra
+  "quem pode entregar" fica em `orders/delivery-rule.ts` (`canDeliverOrder`,
+  `countReadyToDeliver`), usada pelo botão de entregar e pelo contador: reutilize, não
+  duplique. O badge âmbar de "aguardando envio" (fila offline) continua separado.
 - Deploy: Google Cloud (Cloud Run + Cloud SQL PostgreSQL, região `southamerica-east1`).
   Uma imagem (`Dockerfile`, alvo `runtime`) serve a API e o front na mesma origem
   (`WEB_DIST_DIR`); o alvo `migrate` roda `prisma migrate deploy` como Cloud Run Job
