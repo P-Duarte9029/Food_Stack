@@ -489,6 +489,12 @@ Estrutura e convenções do scaffold:
   servidor grava vazio como nulo. O campo fica na seção "3. Observações" do atendente, vai
   na fila offline junto com o pedido e aparece destacado no card da cozinha, em "Pedidos
   enviados" e no histórico do Controle. É por pedido, não por item.
+- Histórico por período: o histórico do Controle abre no dia de hoje e filtra por intervalo
+  (`De`/`Até`, inputs `date` nativos, inclusivo; data vazia deixa a ponta aberta, "Todo o
+  período" limpa as duas) e separa os pedidos por dia, do mais recente ao mais antigo. O dia é
+  o do fuso do navegador. O filtro é no cliente, sobre os pedidos que o `orders-store` já tem
+  (`GET /orders` devolve todos); a lógica pura está em `orders/history-period.ts`. Se o volume
+  crescer, o próximo passo é filtrar no servidor.
 - Contador de prontos: a aba "Pedidos enviados" (`AttendantTabs`) mostra um badge verde com os
   pedidos prontos que o usuário pode entregar; ao entregar, o pedido sai da contagem. A regra
   "quem pode entregar" fica em `orders/delivery-rule.ts` (`canDeliverOrder`,

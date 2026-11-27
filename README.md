@@ -58,8 +58,10 @@ The Control screen has three sections:
   when they were made.
 - **Team** (`#/controle/equipe`): create users with a role (waiter, cook or
   manager) and activate or deactivate them.
-- **History** (`#/controle/historico`): every order, with table, customer name,
-  the kitchen note (when there is one) and the waiter who created it.
+- **History** (`#/controle/historico`): orders with table, customer name, the kitchen
+  note (when there is one) and the waiter who created it. It opens on today and can be
+  filtered by period with a date picker ("From" and "To", or "All time"); orders are
+  grouped by day, newest first.
 
 The Restaurants screen (super admin only) creates a restaurant together with its first
 manager, edits its name and number of tables, and deactivates or reactivates it. A new
