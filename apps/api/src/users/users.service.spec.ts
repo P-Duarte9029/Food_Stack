@@ -71,3 +71,124 @@ describe('UsersService.setActive', () => {
     expect(disconnectUser).toHaveBeenCalledWith('c1');
   });
 });
+
+describe('UsersService.updateProfile', () => {
+  const cook = { id: 'c1', name: 'Caio', email: 'caio@x.co', role: 'cook', active: true };
+
+  it('lança NotFound para usuário de outro restaurante ou inexistente', async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const { service } = setup({ user: { findFirst } });
+    await expect(service.updateProfile('r1', 'zzz', { name: 'X' })).rejects.toThrow(NotFoundException);
+    expect(findFirst.mock.calls[0]?.[0].where).toEqual({ id: 'zzz', restaurantId: 'r1' });
+  });
+
+  it('muda só o nome sem derrubar sessões', async () => {
+    const update = vi.fn().mockResolvedValue({ ...cook, name: 'Novo' });
+    const { service, destroyAllOf, disconnectUser } = setup({
+      user: { findFirst: vi.fn().mockResolvedValue(cook), update },
+    });
+
+    await service.updateProfile('r1', 'c1', { name: 'Novo' });
+
+    expect(update.mock.calls[0]?.[0].data).toEqual({
+      name: 'Novo',
+      email: undefined,
+      role: undefined,
+      passwordHash: undefined,
+    });
+    expect(destroyAllOf).not.toHaveBeenCalled();
+    expect(disconnectUser).not.toHaveBeenCalled();
+  });
+
+  it('recusa e-mail que já pertence a outro usuário', async () => {
+    const update = vi.fn();
+    const { service } = setup({
+      user: {
+        findFirst: vi.fn().mockResolvedValue(cook),
+        findUnique: vi.fn().mockResolvedValue({ id: 'outro' }),
+        update,
+      },
+    });
+    await expect(service.updateProfile('r1', 'c1', { email: 'ana@x.co' })).rejects.toThrow(
+      ConflictException,
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('não consulta e-mail quando ele não muda', async () => {
+    const findUnique = vi.fn();
+    const { service } = setup({
+      user: {
+        findFirst: vi.fn().mockResolvedValue(cook),
+        findUnique,
+        update: vi.fn().mockResolvedValue(cook),
+      },
+    });
+    await service.updateProfile('r1', 'c1', { email: 'caio@x.co' });
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  it('não rebaixa o último gerente ativo', async () => {
+    const update = vi.fn();
+    const { service } = setup({
+      user: {
+        findFirst: vi.fn().mockResolvedValue(manager),
+        count: vi.fn().mockResolvedValue(0),
+        update,
+      },
+    });
+    await expect(service.updateProfile('r1', 'm1', { role: 'waiter' })).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('rebaixa um gerente quando há outro ativo e encerra as sessões', async () => {
+    const count = vi.fn().mockResolvedValue(1);
+    const { service, destroyAllOf, disconnectUser } = setup({
+      user: {
+        findFirst: vi.fn().mockResolvedValue(manager),
+        count,
+        update: vi.fn().mockResolvedValue({ ...manager, role: 'waiter' }),
+      },
+    });
+
+    await service.updateProfile('r1', 'm1', { role: 'waiter' });
+
+    expect(count.mock.calls[0]?.[0].where).toEqual({
+      restaurantId: 'r1',
+      role: 'manager',
+      active: true,
+      id: { not: 'm1' },
+    });
+    expect(destroyAllOf).toHaveBeenCalledWith('m1');
+    expect(disconnectUser).toHaveBeenCalledWith('m1');
+  });
+
+  it('redefine a senha gravando só o hash e encerra as sessões', async () => {
+    const update = vi.fn().mockResolvedValue(cook);
+    const { service, destroyAllOf } = setup({
+      user: { findFirst: vi.fn().mockResolvedValue(cook), update },
+    });
+
+    await service.updateProfile('r1', 'c1', { password: 'nova-senha-longa-1' });
+
+    const data = update.mock.calls[0]?.[0].data;
+    expect(data.passwordHash).toMatch(/^scrypt\$/);
+    expect(JSON.stringify(data)).not.toContain('nova-senha-longa-1');
+    expect(destroyAllOf).toHaveBeenCalledWith('c1');
+  });
+
+  it('trata corrida de e-mail (violação de unicidade) como conflito', async () => {
+    const { service } = setup({
+      user: {
+        findFirst: vi.fn().mockResolvedValue(cook),
+        findUnique: vi.fn().mockResolvedValue(null),
+        update: vi.fn().mockRejectedValue({ code: 'P2002' }),
+      },
+    });
+    await expect(service.updateProfile('r1', 'c1', { email: 'novo@x.co' })).rejects.toThrow(
+      ConflictException,
+    );
+  });
+});

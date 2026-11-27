@@ -64,7 +64,13 @@ The Control screen has three sections:
 The Restaurants screen (super admin only) creates a restaurant together with its first
 manager, edits its name and number of tables, and deactivates or reactivates it. A new
 restaurant starts with an empty menu and its own tables, orders and history. Deactivating
-a restaurant signs everyone out and blocks their login; the data is kept.
+a restaurant signs everyone out and blocks their login; the data is kept. Each restaurant
+also has a "Team" button that lists its users and lets the super admin create users,
+activate or deactivate them, and edit a user's name, e-mail, role and password (a blank
+password keeps the current one). The rules are the same as in the manager's Team
+section (unique e-mail, at least one active manager, including when demoting one), and
+changing a role or password signs that user out. Only the super admin edits profiles;
+managers can still only create and activate or deactivate users.
 
 The layout adapts to the screen: section tabs at the top on a phone, and a side
 menu with a wider content area on desktop.

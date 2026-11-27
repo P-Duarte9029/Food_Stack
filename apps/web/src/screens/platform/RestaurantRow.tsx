@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { CircleCheck, CirclePause, Pencil, Power } from 'lucide-react';
+import { CircleCheck, CirclePause, Pencil, Power, Users } from 'lucide-react';
 import {
   MAX_TABLES,
   platformRestaurantSchema,
@@ -8,6 +8,7 @@ import {
   type UpdateRestaurantInput,
 } from '@food-stack/shared';
 import { request } from '../../api/client';
+import { TeamSection } from '../TeamSection';
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
@@ -29,6 +30,7 @@ export function RestaurantRow({
   const [tables, setTables] = useState(String(restaurant.tablesCount));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
 
   const send = async (changes: UpdateRestaurantInput) => {
     const parsed = updateRestaurantInputSchema.safeParse(changes);
@@ -160,6 +162,15 @@ export function RestaurantRow({
             </div>
           ) : (
             <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-expanded={showTeam}
+                onClick={() => setShowTeam((current) => !current)}
+                className={secondaryButton}
+              >
+                <Users aria-hidden className="size-4" />
+                {showTeam ? 'Ocultar equipe' : 'Equipe'}
+              </button>
               <button type="button" onClick={startEdit} className={secondaryButton}>
                 <Pencil aria-hidden className="size-4" />
                 Editar
@@ -181,6 +192,9 @@ export function RestaurantRow({
             <p role="alert" className="mt-2 text-sm text-red-700">
               {error}
             </p>
+          )}
+          {showTeam && mode !== 'confirm-toggle' && (
+            <TeamSection basePath={`/platform/restaurants/${restaurant.id}/users`} embedded editable />
           )}
         </>
       )}

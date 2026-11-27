@@ -6,6 +6,7 @@ import {
   type UpdateRestaurantInput,
 } from '@food-stack/shared';
 import { hashPassword } from '../auth/password';
+import { isUniqueViolation } from '../common/prisma-errors';
 import { PrismaService } from '../prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PLATFORM_RESTAURANT_ID } from '../restaurant/default-restaurant';
@@ -34,8 +35,6 @@ export const toPlatformRestaurant = (record: RestaurantRecord): PlatformRestaura
   createdAt: record.createdAt.toISOString(),
 });
 
-const isUniqueViolation = (error: unknown): boolean =>
-  typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 
 @Injectable()
 export class PlatformService {
@@ -52,6 +51,15 @@ export class PlatformService {
       select: restaurantSelect,
     });
     return records.map(toPlatformRestaurant);
+  }
+
+  /** Garante que o restaurante existe e é gerenciável (nunca o interno da plataforma). */
+  async assertManageable(id: string): Promise<void> {
+    const found = await this.prisma.restaurant.findFirst({
+      where: { id, NOT: { id: PLATFORM_RESTAURANT_ID } },
+      select: { id: true },
+    });
+    if (!found) throw new NotFoundException('Restaurante não encontrado');
   }
 
   /** Cria o restaurante, vazio, junto com o primeiro gerente, numa única operação. */
@@ -87,11 +95,7 @@ export class PlatformService {
   }
 
   async update(id: string, input: UpdateRestaurantInput): Promise<PlatformRestaurant> {
-    const current = await this.prisma.restaurant.findFirst({
-      where: { id, NOT: { id: PLATFORM_RESTAURANT_ID } },
-      select: { id: true },
-    });
-    if (!current) throw new NotFoundException('Restaurante não encontrado');
+    await this.assertManageable(id);
 
     const record = await this.prisma.restaurant.update({
       where: { id },
