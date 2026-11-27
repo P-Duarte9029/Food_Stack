@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ROLE_LABEL, createUserInputSchema, roleSchema, staffRoleSchema } from './auth';
+import {
+  ROLE_LABEL,
+  createUserInputSchema,
+  platformUpdateUserInputSchema,
+  roleSchema,
+  staffRoleSchema,
+} from './auth';
 import {
   DEFAULT_TABLES_COUNT,
   createRestaurantInputSchema,
@@ -66,5 +72,33 @@ describe('updateRestaurantInputSchema', () => {
 
   it('exige ao menos um campo', () => {
     expect(updateRestaurantInputSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('platformUpdateUserInputSchema', () => {
+  it('aceita só ativar/desativar', () => {
+    expect(platformUpdateUserInputSchema.safeParse({ active: false }).success).toBe(true);
+  });
+
+  it('aceita editar um ou mais campos do perfil', () => {
+    expect(platformUpdateUserInputSchema.safeParse({ name: 'Ana' }).success).toBe(true);
+    expect(
+      platformUpdateUserInputSchema.safeParse({ email: ' ANA@X.CO ', role: 'cook' }).success,
+    ).toBe(true);
+  });
+
+  it('normaliza o e-mail como na criação', () => {
+    const parsed = platformUpdateUserInputSchema.parse({ email: ' ANA@X.CO ' });
+    expect(parsed).toEqual({ email: 'ana@x.co' });
+  });
+
+  it('recusa corpo vazio, misturar active com perfil e papel de plataforma', () => {
+    expect(platformUpdateUserInputSchema.safeParse({}).success).toBe(false);
+    expect(platformUpdateUserInputSchema.safeParse({ active: true, name: 'Ana' }).success).toBe(false);
+    expect(platformUpdateUserInputSchema.safeParse({ role: 'super_admin' }).success).toBe(false);
+  });
+
+  it('recusa senha curta', () => {
+    expect(platformUpdateUserInputSchema.safeParse({ password: 'curta' }).success).toBe(false);
   });
 });

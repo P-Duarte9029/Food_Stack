@@ -436,7 +436,14 @@ Estrutura e convenções do scaffold:
   default true): desativar apaga as sessões, derruba os sockets, o login responde 403 e
   `SessionService.validate` recusa. Tela `#/plataforma`. O isolamento entre restaurantes
   vem de todo serviço filtrar pelo `restaurantId` do usuário logado e de uma sala de
-  tempo real por restaurante; qualquer rota nova deve seguir isso.
+  tempo real por restaurante; qualquer rota nova deve seguir isso. Única exceção: a equipe
+  de cada restaurante, em `/platform/restaurants/:restaurantId/users` (listar, criar,
+  ativar/desativar e editar nome, e-mail, papel e senha; `PlatformUsersController`, só
+  `super_admin`; trocar papel ou senha encerra as sessões do usuário). Ali o restaurante vem da
+  rota, validado por `PlatformService.assertManageable` (que recusa o restaurante interno),
+  e reaproveita `UsersService`, com as mesmas regras (e-mail único, último gerente ativo,
+  inclusive ao rebaixar). A edição é só do super admin; o gerente não edita perfis. O
+  front reaproveita `TeamSection` (`basePath`) no botão "Equipe" de cada restaurante.
 - Uso offline: `remote-store` guarda o último cardápio, mesas e pedidos por
   usuário (limpo no logout) e a identidade da sessão fica em cache para o app
   abrir sem rede; o service worker (vite-plugin-pwa) cuida da casca do app e

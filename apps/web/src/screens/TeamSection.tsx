@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { UserPlus } from 'lucide-react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { Pencil, UserPlus } from 'lucide-react';
 import { z } from 'zod';
 import {
   MIN_PASSWORD_LENGTH,
@@ -12,6 +12,7 @@ import {
 } from '@food-stack/shared';
 import { request } from '../api/client';
 import { useAuth } from '../auth/auth-store';
+import { MemberEditForm } from './team/MemberEditForm';
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
@@ -22,7 +23,19 @@ const ROLES = staffRoleSchema.options;
 const messageOf = (failure: unknown, fallback: string): string =>
   failure instanceof Error ? failure.message : fallback;
 
-export function TeamSection() {
+export function TeamSection({
+  basePath = '/users',
+  embedded = false,
+  editable = false,
+}: {
+  /** Rota da equipe na API: `/users` (o próprio restaurante) ou a do super admin. */
+  basePath?: string;
+  embedded?: boolean;
+  /** Permite editar nome, e-mail, papel e senha (só o super admin, pela rota da plataforma). */
+  editable?: boolean;
+}) {
+  const uid = useId();
+  const Heading = embedded ? 'h4' : 'h2';
   const { user: me } = useAuth();
   const [users, setUsers] = useState<readonly UserSummary[]>([]);
   const [name, setName] = useState('');
@@ -33,14 +46,15 @@ export function TeamSection() {
   const [created, setCreated] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setUsers(await request('GET', '/users', usersSchema));
+      setUsers(await request('GET', basePath, usersSchema));
     } catch (failure) {
       setError(messageOf(failure, 'Não foi possível carregar a equipe.'));
     }
-  }, []);
+  }, [basePath]);
 
   useEffect(() => {
     void load();
@@ -57,7 +71,7 @@ export function TeamSection() {
     setSaving(true);
     setError(null);
     try {
-      await request('POST', '/users', userSummarySchema, parsed.data);
+      await request('POST', basePath, userSummarySchema, parsed.data);
       setCreated(parsed.data.name);
       setName('');
       setEmail('');
@@ -75,7 +89,7 @@ export function TeamSection() {
     setError(null);
     setCreated(null);
     try {
-      await request('PATCH', `/users/${id}`, userSummarySchema, { active });
+      await request('PATCH', `${basePath}/${id}`, userSummarySchema, { active });
       setConfirming(null);
       await load();
     } catch (failure) {
@@ -84,17 +98,20 @@ export function TeamSection() {
   };
 
   return (
-    <section aria-labelledby="equipe-titulo" className="rounded-xl border border-slate-200 bg-white p-4">
-      <h2 id="equipe-titulo" className="text-lg font-bold">
+    <section
+      aria-labelledby={`${uid}-titulo`}
+      className={embedded ? 'mt-3' : 'rounded-xl border border-slate-200 bg-white p-4'}
+    >
+      <Heading id={`${uid}-titulo`} className="text-lg font-bold">
         Equipe
-      </h2>
+      </Heading>
       <form onSubmit={(event) => void submit(event)} className="mt-3 grid gap-3 sm:grid-cols-2" noValidate>
         <div>
-          <label htmlFor="equipe-nome" className="text-sm font-medium text-slate-700">
+          <label htmlFor={`${uid}-nome`} className="text-sm font-medium text-slate-700">
             Nome
           </label>
           <input
-            id="equipe-nome"
+            id={`${uid}-nome`}
             type="text"
             autoComplete="off"
             value={name}
@@ -103,11 +120,11 @@ export function TeamSection() {
           />
         </div>
         <div>
-          <label htmlFor="equipe-papel" className="text-sm font-medium text-slate-700">
+          <label htmlFor={`${uid}-papel`} className="text-sm font-medium text-slate-700">
             Papel
           </label>
           <select
-            id="equipe-papel"
+            id={`${uid}-papel`}
             value={role}
             onChange={(event) => setRole(staffRoleSchema.parse(event.target.value))}
             className={fieldClasses}
@@ -120,11 +137,11 @@ export function TeamSection() {
           </select>
         </div>
         <div>
-          <label htmlFor="equipe-email" className="text-sm font-medium text-slate-700">
+          <label htmlFor={`${uid}-email`} className="text-sm font-medium text-slate-700">
             E-mail
           </label>
           <input
-            id="equipe-email"
+            id={`${uid}-email`}
             type="email"
             autoComplete="off"
             value={email}
@@ -133,11 +150,11 @@ export function TeamSection() {
           />
         </div>
         <div>
-          <label htmlFor="equipe-senha" className="text-sm font-medium text-slate-700">
+          <label htmlFor={`${uid}-senha`} className="text-sm font-medium text-slate-700">
             Senha inicial (mín. {MIN_PASSWORD_LENGTH} caracteres)
           </label>
           <input
-            id="equipe-senha"
+            id={`${uid}-senha`}
             type="password"
             autoComplete="new-password"
             value={password}
@@ -170,6 +187,22 @@ export function TeamSection() {
       <ul className="mt-5 divide-y divide-slate-200 rounded-lg border border-slate-200">
         {users.map((member) => {
           const isMe = member.id === me?.id;
+          if (editing === member.id) {
+            return (
+              <li key={member.id} className="p-3">
+                <MemberEditForm
+                  member={member}
+                  basePath={basePath}
+                  onSaved={() => {
+                    setEditing(null);
+                    setCreated(null);
+                    void load();
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              </li>
+            );
+          }
           return (
             <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
               <div className="min-w-0">
@@ -182,6 +215,20 @@ export function TeamSection() {
                   {!member.active && ' · Desativado'}
                 </p>
               </div>
+              {editable && confirming !== member.id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setCreated(null);
+                    setEditing(member.id);
+                  }}
+                  className={`flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-800 ${focusRing}`}
+                >
+                  <Pencil aria-hidden className="size-4" />
+                  Editar
+                </button>
+              )}
               {!isMe &&
                 (confirming === member.id ? (
                   <span className="flex items-center gap-2">
