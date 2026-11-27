@@ -476,3 +476,9 @@ Estrutura e convenções do scaffold:
   descarta a edição, e remover o prato vence a edição. O formulário de novo prato e o de
   edição são o mesmo componente (`screens/control/DishForm.tsx`). Pratos "Novo" ainda
   não salvos não são editáveis: descarte e inclua de novo.
+- Observação do pedido: `orders.notes` (`String?`, nulo = sem observação e pedidos antigos,
+  sem backfill) leva um recado do atendente para a cozinha. O limite é
+  `ORDER_NOTES_MAX_LENGTH` (200, em `packages/shared`), aplicado no schema Zod com `trim`; o
+  servidor grava vazio como nulo. O campo fica na seção "3. Observações" do atendente, vai
+  na fila offline junto com o pedido e aparece destacado no card da cozinha, em "Pedidos
+  enviados" e no histórico do Controle. É por pedido, não por item.

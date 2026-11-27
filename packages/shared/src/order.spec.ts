@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createOrderInputSchema, nextOrderStatus, orderItemLabel } from './order';
+import {
+  createOrderInputSchema,
+  nextOrderStatus,
+  ORDER_NOTES_MAX_LENGTH,
+  orderItemLabel,
+} from './order';
 
 describe('nextOrderStatus', () => {
   it('avança placed -> in_preparation -> ready', () => {
@@ -27,6 +32,16 @@ describe('createOrderInputSchema', () => {
 
   it('aceita pedido válido', () => {
     expect(createOrderInputSchema.safeParse({ table: 3, items: [item] }).success).toBe(true);
+  });
+
+  it('aceita observação e remove espaços nas pontas', () => {
+    const parsed = createOrderInputSchema.parse({ table: 3, items: [item], notes: '  sem cebola ' });
+    expect(parsed.notes).toBe('sem cebola');
+  });
+
+  it('rejeita observação acima do limite', () => {
+    const notes = 'a'.repeat(ORDER_NOTES_MAX_LENGTH + 1);
+    expect(createOrderInputSchema.safeParse({ table: 3, items: [item], notes }).success).toBe(false);
   });
 });
 

@@ -94,6 +94,11 @@ function SentOrderCard({ order }: { order: Order }) {
       <p className="mt-1 break-words text-sm text-slate-700">
         {order.items.map((item) => `${item.quantity}x ${orderItemLabel(item)}`).join(', ')}
       </p>
+      {order.notes && (
+        <p className="mt-1 break-words text-sm text-slate-700">
+          <span className="font-semibold">Obs.:</span> {order.notes}
+        </p>
+      )}
       <ProgressSteps status={order.status} />
       {canDeliver && (
         <button

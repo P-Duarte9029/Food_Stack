@@ -47,8 +47,13 @@ describe('toOrder', () => {
       customerName: null,
       createdById: null,
       createdByName: null,
+      notes: null,
       items: [{ menuItemId: 'm1', name: 'Pudim', size: null, quantity: 2 }],
     });
+  });
+
+  it('expõe a observação para a cozinha', () => {
+    expect(toOrder({ ...record('placed'), notes: 'sem cebola' }).notes).toBe('sem cebola');
   });
 });
 
@@ -152,6 +157,24 @@ describe('OrdersService.create', () => {
     expect(create.mock.calls[0]?.[0].data.checkId).toBe('check-1');
     expect(create.mock.calls[0]?.[0].data.createdById).toBe(USER_ID);
     expect(publish).toHaveBeenCalledWith(DEFAULT_RESTAURANT_ID, REALTIME_EVENTS.orderCreated, order);
+  });
+
+  it.each([
+    ['grava a observação', 'sem cebola', 'sem cebola'],
+    ['grava nulo quando não há observação', undefined, null],
+    ['grava nulo quando a observação é vazia', '', null],
+  ])('%s', async (_name, notes, expected) => {
+    const create = vi.fn().mockResolvedValue(record('placed'));
+    const { service } = setup({
+      restaurant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ tablesCount: 10 }) },
+      tableSession: openSession,
+      menuItem: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', name: 'Pudim', sizes: [] }]) },
+      order: { create },
+    });
+
+    await service.create(DEFAULT_RESTAURANT_ID, USER_ID, { ...input, notes });
+
+    expect(create.mock.calls[0]?.[0].data.notes).toBe(expected);
   });
 });
 

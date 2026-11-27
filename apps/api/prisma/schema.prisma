@@ -65,6 +65,8 @@ model Order {
   checkId        String?
   // Atendente que criou o pedido. Nulo nos pedidos anteriores a este registro.
   createdById    String?
+  // Observação do atendente para a cozinha. Nulo quando não há e nos pedidos antigos.
+  notes          String?
 
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
   tableSession TableSession? @relation(fields: [tableSessionId], references: [id])

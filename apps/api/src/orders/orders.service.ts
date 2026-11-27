@@ -111,6 +111,7 @@ export class OrdersService {
             tableSessionId: target.tableSessionId,
             checkId: target.checkId,
             createdById: userId,
+            notes: input.notes || null,
             items: {
               create: [...lines.values()],
             },

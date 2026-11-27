@@ -16,6 +16,8 @@ export type OrderItem = z.infer<typeof orderItemSchema>;
 export const orderItemLabel = (item: Pick<OrderItem, 'name' | 'size'>): string =>
   item.size ? `${item.name} (${item.size})` : item.name;
 
+export const ORDER_NOTES_MAX_LENGTH = 200;
+
 export const createOrderInputSchema = z.object({
   // Gerado no cliente: torna o reenvio de pedidos da fila offline idempotente.
   id: z.string().uuid().optional(),
@@ -25,6 +27,8 @@ export const createOrderInputSchema = z.object({
   // Comanda do pedido. Sem ela, vale a única comanda aberta da mesa.
   checkId: z.string().uuid().optional(),
   items: z.array(orderItemSchema).min(1),
+  // Observação para a cozinha; ausente ou vazia = sem observação.
+  notes: z.string().trim().max(ORDER_NOTES_MAX_LENGTH).nullish(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
 
